@@ -2,15 +2,20 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Factura</title>
 
 <style>
-
 body{
-font-family:Segoe UI;
+font-family:Segoe UI, sans-serif;
 background:linear-gradient(135deg,#1e1e2f,#2c2c54);
 margin:0;
 padding:30px;
+box-sizing:border-box;
+}
+
+*{
+box-sizing:border-box;
 }
 
 .factura{
@@ -23,29 +28,44 @@ box-shadow:0 15px 40px rgba(0,0,0,0.4);
 position:relative;
 }
 
-.logo{text-align:center}
+.logo{
+text-align:center;
+}
 
 .logo img{
 width:120px;
+max-width:100%;
+object-fit:contain;
 }
 
-h2{text-align:center}
+h2{
+text-align:center;
+margin:12px 0 20px 0;
+word-break:break-word;
+}
 
 .info{
 display:flex;
 justify-content:space-between;
+gap:16px;
 margin-bottom:20px;
+flex-wrap:wrap;
 }
 
 button{
-padding:8px 14px;
+padding:10px 14px;
 border:none;
 border-radius:6px;
 cursor:pointer;
 font-weight:bold;
+font-size:14px;
 }
 
-.agregar{background:#28a745;color:white}
+.agregar{
+background:#28a745;
+color:white;
+white-space:nowrap;
+}
 
 .imprimir{
 background:#007bff;
@@ -65,22 +85,30 @@ color:white;
 table{
 width:100%;
 border-collapse:collapse;
+table-layout:fixed;
 }
 
 th{
 background:#222;
 color:white;
 padding:10px;
+font-size:14px;
 }
 
 td{
 padding:10px;
 border-bottom:1px solid #ddd;
+font-size:14px;
+word-wrap:break-word;
 }
 
-.derecha{text-align:right}
+.derecha{
+text-align:right;
+}
 
-.resumen{margin-top:20px}
+.resumen{
+margin-top:20px;
+}
 
 .total{
 font-size:22px;
@@ -91,13 +119,24 @@ font-weight:bold;
 display:flex;
 gap:10px;
 margin-bottom:20px;
+align-items:stretch;
 }
 
 .form-producto input{
-padding:8px;
+padding:10px;
 border-radius:6px;
 border:1px solid #ccc;
 width:100%;
+font-size:14px;
+min-width:0;
+}
+
+#clienteArea input,
+.modal input{
+padding:10px;
+border-radius:6px;
+border:1px solid #ccc;
+font-size:14px;
 }
 
 .toggle{
@@ -105,6 +144,7 @@ display:flex;
 align-items:center;
 gap:10px;
 margin:10px 0;
+flex-wrap:wrap;
 }
 
 .switch{
@@ -114,6 +154,7 @@ background:#ccc;
 border-radius:20px;
 position:relative;
 cursor:pointer;
+flex-shrink:0;
 }
 
 .switch::after{
@@ -137,7 +178,6 @@ left:27px;
 }
 
 /* MODAL */
-
 .modal{
 position:fixed;
 top:0;
@@ -148,6 +188,8 @@ background:rgba(0,0,0,0.6);
 display:none;
 align-items:center;
 justify-content:center;
+padding:16px;
+z-index:999;
 }
 
 .modal-content{
@@ -155,19 +197,132 @@ background:white;
 padding:30px;
 border-radius:10px;
 width:350px;
+max-width:100%;
+max-height:90vh;
+overflow:auto;
 }
 
 .modal input{
 width:100%;
-padding:8px;
 margin-bottom:10px;
 }
 
-/* impresión */
+#dropArea{
+border:2px dashed #ccc;
+padding:20px;
+text-align:center;
+margin-bottom:10px;
+border-radius:8px;
+word-break:break-word;
+}
 
+/* ===== MOBILE UX ===== */
+@media (max-width:700px){
+
+body{
+padding:10px;
+}
+
+.factura{
+padding:18px;
+border-radius:10px;
+}
+
+.logo img{
+width:85px;
+}
+
+h2{
+font-size:20px;
+margin-top:18px;
+margin-bottom:16px;
+padding:0 50px 0 0;
+}
+
+.info{
+flex-direction:column;
+gap:6px;
+font-size:15px;
+}
+
+.form-producto{
+flex-direction:column;
+gap:8px;
+}
+
+.form-producto input{
+font-size:16px;
+padding:12px;
+}
+
+.agregar{
+width:100%;
+padding:12px;
+font-size:16px;
+}
+
+table{
+font-size:14px;
+}
+
+th{
+font-size:13px;
+padding:8px 6px;
+}
+
+td{
+padding:8px 6px;
+font-size:13px;
+}
+
+.resumen td{
+font-size:15px;
+}
+
+.total{
+font-size:20px;
+}
+
+.imprimir{
+padding:14px;
+font-size:16px;
+}
+
+.ajustes-btn{
+top:8px;
+right:8px;
+padding:6px 10px;
+font-size:13px;
+}
+
+.toggle{
+font-size:15px;
+}
+
+.switch{
+transform:scale(0.95);
+transform-origin:left center;
+}
+
+.modal-content{
+padding:20px;
+width:100%;
+}
+
+#clienteArea input,
+.modal input{
+font-size:16px;
+}
+
+}
+
+/* impresión */
 @media print{
 
-body{background:white}
+body{
+background:white;
+padding:0;
+}
 
 .ajustes-btn,
 .form-producto,
@@ -180,6 +335,8 @@ display:none;
 .factura{
 box-shadow:none;
 padding:10px;
+border-radius:0;
+max-width:none;
 }
 
 th,td{
@@ -191,7 +348,6 @@ font-size:22px;
 }
 
 }
-
 </style>
 </head>
 
@@ -199,7 +355,7 @@ font-size:22px;
 
 <div class="factura">
 
-<button class="ajustes-btn" onclick="abrirAjustes()">⚙ Ajustes</button>
+<button class="ajustes-btn" type="button" onclick="abrirAjustes()">⚙ Ajustes</button>
 
 <div class="logo">
 <img id="logoImg" src="" alt="logo">
@@ -213,9 +369,8 @@ font-size:22px;
 </div>
 
 <!-- CLIENTE -->
-
 <div class="toggle">
-Cliente
+<span>Cliente</span>
 <div id="toggleCliente" class="switch"></div>
 </div>
 
@@ -224,7 +379,7 @@ Cliente
 <input id="clienteNombre" placeholder="Nombre del cliente">
 
 <div class="toggle">
-Empresa
+<span>Empresa</span>
 <div id="toggleEmpresa" class="switch"></div>
 </div>
 
@@ -235,19 +390,14 @@ Empresa
 </div>
 
 <!-- PRODUCTOS -->
-
 <div class="form-producto">
-
 <input id="nombre" placeholder="Producto">
-<input id="cantidad" type="number" placeholder="Cantidad">
-<input id="precio" type="number" placeholder="Precio">
-
-<button class="agregar" onclick="agregarProducto()">Agregar</button>
-
+<input id="cantidad" type="number" placeholder="Cantidad" min="1" step="1">
+<input id="precio" type="number" placeholder="Precio" min="0" step="0.01">
+<button class="agregar" type="button" onclick="agregarProducto()">Agregar</button>
 </div>
 
 <table>
-
 <thead>
 <tr>
 <th>Producto</th>
@@ -258,215 +408,230 @@ Empresa
 </thead>
 
 <tbody id="tablaProductos"></tbody>
-
 </table>
 
 <table class="resumen">
-
 <tr>
 <td></td>
 <td class="derecha">Subtotal</td>
-<td class="derecha" id="subtotal">RD$0</td>
+<td class="derecha" id="subtotal">RD$0.00</td>
 </tr>
 
 <tr id="filaItbis">
 <td></td>
 <td class="derecha">ITBIS</td>
-<td class="derecha" id="itbis">RD$0</td>
+<td class="derecha" id="itbis">RD$0.00</td>
 </tr>
 
 <tr class="total">
 <td></td>
 <td class="derecha">Total</td>
-<td class="derecha" id="total">RD$0</td>
+<td class="derecha" id="total">RD$0.00</td>
 </tr>
-
 </table>
 
-<button class="imprimir" onclick="window.print()">Imprimir</button>
+<button class="imprimir" type="button" onclick="window.print()">Imprimir</button>
 
 </div>
 
 <!-- MODAL AJUSTES -->
-
 <div class="modal" id="modalAjustes">
-
 <div class="modal-content">
 
 <h3>Ajustes</h3>
 
-<label>Nombre empresa</label>
+<label for="empresaInput">Nombre empresa</label>
 <input id="empresaInput">
 
-<label>RNC</label>
+<label for="rncInput">RNC</label>
 <input id="rncInput">
 
-<label>Logo</label>
-<input type="file" id="logoInput">
+<label for="logoInput">Logo</label>
+<input type="file" id="logoInput" accept="image/*">
 
-<div style="border:2px dashed #ccc;padding:20px;text-align:center;margin-bottom:10px" id="dropArea">
+<div id="dropArea">
 Arrastra logo aquí
 </div>
 
 <div class="toggle">
-ITBIS
+<span>ITBIS</span>
 <div id="toggleItbis" class="switch"></div>
 </div>
 
-<button onclick="guardarAjustes()">Guardar</button>
+<button type="button" onclick="guardarAjustes()">Guardar</button>
 
 </div>
-
 </div>
 
 <script>
+const now = new Date();
 
-/* numero factura */
+const numeroFactura = document.getElementById("numeroFactura");
+const fecha = document.getElementById("fecha");
+const empresaNombre = document.getElementById("empresaNombre");
+const empresaInput = document.getElementById("empresaInput");
+const rncInput = document.getElementById("rncInput");
+const rncTexto = document.getElementById("rncTexto");
+const logoImg = document.getElementById("logoImg");
+const logoInput = document.getElementById("logoInput");
+const dropArea = document.getElementById("dropArea");
+const modalAjustes = document.getElementById("modalAjustes");
+const toggleCliente = document.getElementById("toggleCliente");
+const toggleEmpresa = document.getElementById("toggleEmpresa");
+const toggleItbis = document.getElementById("toggleItbis");
+const clienteArea = document.getElementById("clienteArea");
+const rncMostrar = document.getElementById("rncMostrar");
+const subtotalEl = document.getElementById("subtotal");
+const itbisEl = document.getElementById("itbis");
+const totalEl = document.getElementById("total");
+const filaItbis = document.getElementById("filaItbis");
+const tablaProductos = document.getElementById("tablaProductos");
 
-const now=new Date()
+numeroFactura.textContent = "JS-" + now.getTime();
+fecha.textContent = now.toLocaleDateString("es-DO");
 
-numeroFactura.textContent="JS-"+now.getTime()
-fecha.textContent=now.toLocaleDateString("es-DO")
-
-let totalGeneral=0
+let totalGeneral = 0;
 
 function agregarProducto(){
+const nombreInput = document.getElementById("nombre");
+const cantidadInput = document.getElementById("cantidad");
+const precioInput = document.getElementById("precio");
 
-const nombre=document.getElementById("nombre").value
-const cantidad=parseFloat(document.getElementById("cantidad").value)
-const precio=parseFloat(document.getElementById("precio").value)
+const nombre = nombreInput.value.trim();
+const cantidad = parseFloat(cantidadInput.value);
+const precio = parseFloat(precioInput.value);
 
-if(!nombre||!cantidad||!precio)return
+if(!nombre || isNaN(cantidad) || isNaN(precio) || cantidad <= 0 || precio < 0) return;
 
-const total=cantidad*precio
-totalGeneral+=total
+const total = cantidad * precio;
+totalGeneral += total;
 
-tablaProductos.innerHTML+=`
+tablaProductos.innerHTML += `
 <tr>
 <td>${nombre}</td>
 <td class="derecha">${cantidad}</td>
 <td class="derecha">RD$${precio.toFixed(2)}</td>
 <td class="derecha">RD$${total.toFixed(2)}</td>
-</tr>`
+</tr>`;
 
-calcular()
+calcular();
 
-nombre.value=""
-cantidad.value=""
-precio.value=""
-
+nombreInput.value = "";
+cantidadInput.value = "";
+precioInput.value = "";
+nombreInput.focus();
 }
 
 function calcular(){
-
 if(config.itbis){
+const subtotal = totalGeneral / 1.18;
+const itbis = totalGeneral - subtotal;
 
-const subtotal=totalGeneral/1.18
-const itbis=totalGeneral-subtotal
-
-subtotalEl.textContent="RD$"+subtotal.toFixed(2)
-itbisEl.textContent="RD$"+itbis.toFixed(2)
-
+subtotalEl.textContent = "RD$" + subtotal.toFixed(2);
+itbisEl.textContent = "RD$" + itbis.toFixed(2);
+filaItbis.style.display = "";
 }else{
-
-subtotalEl.textContent="RD$"+totalGeneral.toFixed(2)
-itbisEl.textContent="RD$0"
-
+subtotalEl.textContent = "RD$" + totalGeneral.toFixed(2);
+itbisEl.textContent = "RD$0.00";
+filaItbis.style.display = "none";
 }
 
-totalEl.textContent="RD$"+totalGeneral.toFixed(2)
-
+totalEl.textContent = "RD$" + totalGeneral.toFixed(2);
 }
 
-/* ajustes */
-
-let config=JSON.parse(localStorage.getItem("config"))||{
+let config = JSON.parse(localStorage.getItem("config")) || {
 empresa:"JeanSkirt",
 rnc:"",
 itbis:true,
 logo:""
-}
+};
 
 function cargarConfig(){
+empresaNombre.textContent = config.empresa || "JeanSkirt";
+empresaInput.value = config.empresa || "JeanSkirt";
+rncInput.value = config.rnc || "";
+rncTexto.textContent = config.rnc || "";
 
-empresaNombre.textContent=config.empresa
-empresaInput.value=config.empresa
-rncInput.value=config.rnc
-rncTexto.textContent=config.rnc
+logoImg.src = config.logo || "";
 
-if(config.logo)logoImg.src=config.logo
+toggleItbis.classList.toggle("active", !!config.itbis);
 
-if(config.itbis)toggleItbis.classList.add("active")
-
+calcular();
 }
 
 function guardarAjustes(){
+config.empresa = empresaInput.value.trim() || "JeanSkirt";
+config.rnc = rncInput.value.trim();
+config.itbis = toggleItbis.classList.contains("active");
 
-config.empresa=empresaInput.value
-config.rnc=rncInput.value
-config.itbis=toggleItbis.classList.contains("active")
-
-localStorage.setItem("config",JSON.stringify(config))
-
-cargarConfig()
-
-modalAjustes.style.display="none"
-
+localStorage.setItem("config", JSON.stringify(config));
+cargarConfig();
+modalAjustes.style.display = "none";
 }
 
 function abrirAjustes(){
-modalAjustes.style.display="flex"
+modalAjustes.style.display = "flex";
 }
-
-/* toggle */
 
 function toggle(el){
-el.classList.toggle("active")
+el.classList.toggle("active");
 }
 
-toggleCliente.onclick=()=>{
-toggle(toggleCliente)
-clienteArea.style.display=toggleCliente.classList.contains("active")?"block":"none"
+toggleCliente.onclick = () => {
+toggle(toggleCliente);
+clienteArea.style.display = toggleCliente.classList.contains("active") ? "block" : "none";
+
+if(!toggleCliente.classList.contains("active")){
+toggleEmpresa.classList.remove("active");
+rncMostrar.style.display = "none";
 }
+};
 
-toggleEmpresa.onclick=()=>{
-toggle(toggleEmpresa)
-rncMostrar.style.display=toggleEmpresa.classList.contains("active")?"block":"none"
+toggleEmpresa.onclick = () => {
+toggle(toggleEmpresa);
+rncMostrar.style.display = toggleEmpresa.classList.contains("active") ? "block" : "none";
+};
+
+toggleItbis.onclick = () => {
+toggle(toggleItbis);
+config.itbis = toggleItbis.classList.contains("active");
+calcular();
+};
+
+logoInput.onchange = e => {
+const file = e.target.files[0];
+if(!file) return;
+
+const reader = new FileReader();
+reader.onload = function(){
+config.logo = reader.result;
+logoImg.src = reader.result;
+};
+reader.readAsDataURL(file);
+};
+
+dropArea.ondragover = e => e.preventDefault();
+
+dropArea.ondrop = e => {
+e.preventDefault();
+const file = e.dataTransfer.files[0];
+if(!file) return;
+
+const reader = new FileReader();
+reader.onload = function(){
+config.logo = reader.result;
+logoImg.src = reader.result;
+};
+reader.readAsDataURL(file);
+};
+
+modalAjustes.addEventListener("click", (e) => {
+if(e.target === modalAjustes){
+modalAjustes.style.display = "none";
 }
+});
 
-toggleItbis.onclick=()=>toggle(toggleItbis)
-
-/* logo */
-
-logoInput.onchange=e=>{
-const file=e.target.files[0]
-const reader=new FileReader()
-reader.onload=function(){
-config.logo=reader.result
-logoImg.src=reader.result
-}
-reader.readAsDataURL(file)
-}
-
-dropArea.ondragover=e=>e.preventDefault()
-
-dropArea.ondrop=e=>{
-e.preventDefault()
-const file=e.dataTransfer.files[0]
-const reader=new FileReader()
-reader.onload=function(){
-config.logo=reader.result
-logoImg.src=reader.result
-}
-reader.readAsDataURL(file)
-}
-
-const subtotalEl=document.getElementById("subtotal")
-const itbisEl=document.getElementById("itbis")
-const totalEl=document.getElementById("total")
-
-cargarConfig()
-
+cargarConfig();
 </script>
 
 </body>
