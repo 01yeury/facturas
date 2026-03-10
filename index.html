@@ -18,6 +18,44 @@ box-sizing:border-box;
 box-sizing:border-box;
 }
 
+.auth-box{
+max-width:420px;
+margin:40px auto;
+background:white;
+padding:25px;
+border-radius:14px;
+box-shadow:0 15px 40px rgba(0,0,0,0.35);
+}
+
+.auth-box h2{
+margin-top:0;
+text-align:center;
+}
+
+.auth-box input{
+width:100%;
+padding:12px;
+border:1px solid #ccc;
+border-radius:8px;
+margin-bottom:10px;
+font-size:15px;
+}
+
+.auth-actions{
+display:flex;
+gap:10px;
+}
+
+.auth-actions button{
+flex:1;
+}
+
+#authMsg{
+margin-top:10px;
+font-size:14px;
+min-height:20px;
+}
+
 .factura{
 max-width:850px;
 margin:auto;
@@ -26,6 +64,22 @@ padding:40px;
 border-radius:12px;
 box-shadow:0 15px 40px rgba(0,0,0,0.4);
 position:relative;
+display:none;
+}
+
+.top-actions{
+display:flex;
+justify-content:space-between;
+align-items:center;
+gap:10px;
+margin-bottom:10px;
+}
+
+.top-actions-left,
+.top-actions-right{
+display:flex;
+gap:10px;
+align-items:center;
 }
 
 .logo{
@@ -75,10 +129,12 @@ width:100%;
 }
 
 .ajustes-btn{
-position:absolute;
-top:10px;
-right:10px;
 background:#444;
+color:white;
+}
+
+.salir-btn{
+background:#b42318;
 color:white;
 }
 
@@ -137,6 +193,7 @@ padding:10px;
 border-radius:6px;
 border:1px solid #ccc;
 font-size:14px;
+width:100%;
 }
 
 .toggle{
@@ -177,6 +234,15 @@ background:#28a745;
 left:27px;
 }
 
+.cliente-resumen{
+margin:10px 0 18px 0;
+padding:12px;
+border:1px solid #ddd;
+border-radius:8px;
+background:#fafafa;
+display:none;
+}
+
 /* MODAL */
 .modal{
 position:fixed;
@@ -203,7 +269,6 @@ overflow:auto;
 }
 
 .modal input{
-width:100%;
 margin-bottom:10px;
 }
 
@@ -223,6 +288,15 @@ body{
 padding:10px;
 }
 
+.auth-box{
+margin:10px auto;
+padding:18px;
+}
+
+.auth-actions{
+flex-direction:column;
+}
+
 .factura{
 padding:18px;
 border-radius:10px;
@@ -236,13 +310,23 @@ h2{
 font-size:20px;
 margin-top:18px;
 margin-bottom:16px;
-padding:0 50px 0 0;
 }
 
 .info{
 flex-direction:column;
 gap:6px;
 font-size:15px;
+}
+
+.top-actions{
+flex-direction:column;
+align-items:stretch;
+}
+
+.top-actions-left,
+.top-actions-right{
+width:100%;
+justify-content:space-between;
 }
 
 .form-producto{
@@ -288,10 +372,9 @@ padding:14px;
 font-size:16px;
 }
 
-.ajustes-btn{
-top:8px;
-right:8px;
-padding:6px 10px;
+.ajustes-btn,
+.salir-btn{
+padding:8px 10px;
 font-size:13px;
 }
 
@@ -324,19 +407,26 @@ background:white;
 padding:0;
 }
 
-.ajustes-btn,
+.auth-box,
+.top-actions,
 .form-producto,
 .agregar,
 .imprimir,
-.toggle{
-display:none;
+.toggle,
+#clienteArea{
+display:none !important;
 }
 
 .factura{
+display:block !important;
 box-shadow:none;
 padding:10px;
 border-radius:0;
 max-width:none;
+}
+
+.cliente-resumen{
+display:block !important;
 }
 
 th,td{
@@ -350,121 +440,138 @@ font-size:22px;
 }
 </style>
 </head>
-
 <body>
 
-<div class="factura">
+<div id="loginBox" class="auth-box">
+  <h2>Iniciar sesión</h2>
+  <input id="authEmail" type="email" placeholder="Correo">
+  <input id="authPassword" type="password" placeholder="Contraseña">
 
-<button class="ajustes-btn" type="button" onclick="abrirAjustes()">⚙ Ajustes</button>
+  <div class="auth-actions">
+    <button type="button" onclick="registerUser()">Crear cuenta</button>
+    <button type="button" onclick="loginUser()">Entrar</button>
+  </div>
 
-<div class="logo">
-<img id="logoImg" src="" alt="logo">
+  <p id="authMsg"></p>
 </div>
 
-<h2 id="empresaNombre">JeanSkirt</h2>
+<div class="factura" id="facturaBox">
 
-<div class="info">
-<div><strong>Factura No:</strong> <span id="numeroFactura"></span></div>
-<div><strong>Fecha:</strong> <span id="fecha"></span></div>
-</div>
+  <div class="top-actions">
+    <div class="top-actions-left">
+      <button class="ajustes-btn" type="button" onclick="abrirAjustes()">⚙ Ajustes</button>
+    </div>
+    <div class="top-actions-right">
+      <button class="salir-btn" type="button" onclick="logoutUser()">Salir</button>
+    </div>
+  </div>
 
-<!-- CLIENTE -->
-<div class="toggle">
-<span>Cliente</span>
-<div id="toggleCliente" class="switch"></div>
-</div>
+  <div class="logo">
+    <img id="logoImg" src="" alt="logo">
+  </div>
 
-<div id="clienteArea" style="display:none">
+  <h2 id="empresaNombre">JeanSkirt</h2>
 
-<input id="clienteNombre" placeholder="Nombre del cliente">
+  <div class="info">
+    <div><strong>Factura No:</strong> <span id="numeroFactura"></span></div>
+    <div><strong>Fecha:</strong> <span id="fecha"></span></div>
+  </div>
 
-<div class="toggle">
-<span>Empresa</span>
-<div id="toggleEmpresa" class="switch"></div>
-</div>
+  <!-- CLIENTE -->
+  <div class="toggle">
+    <span>Cliente</span>
+    <div id="toggleCliente" class="switch"></div>
+  </div>
 
-<div id="rncMostrar" style="display:none">
-<strong>RNC:</strong> <span id="rncTexto"></span>
-</div>
+  <div id="clienteArea" style="display:none">
+    <input id="clienteNombre" placeholder="Nombre del cliente">
 
-</div>
+    <div class="toggle">
+      <span>Empresa</span>
+      <div id="toggleEmpresa" class="switch"></div>
+    </div>
 
-<!-- PRODUCTOS -->
-<div class="form-producto">
-<input id="nombre" placeholder="Producto">
-<input id="cantidad" type="number" placeholder="Cantidad" min="1" step="1">
-<input id="precio" type="number" placeholder="Precio" min="0" step="0.01">
-<button class="agregar" type="button" onclick="agregarProducto()">Agregar</button>
-</div>
+    <div id="rncMostrar" style="display:none">
+      <strong>RNC:</strong> <span id="rncTexto"></span>
+    </div>
+  </div>
 
-<table>
-<thead>
-<tr>
-<th>Producto</th>
-<th class="derecha">Cant</th>
-<th class="derecha">P.Unit</th>
-<th class="derecha">Total</th>
-</tr>
-</thead>
+  <div id="clienteResumen" class="cliente-resumen"></div>
 
-<tbody id="tablaProductos"></tbody>
-</table>
+  <!-- PRODUCTOS -->
+  <div class="form-producto">
+    <input id="nombre" placeholder="Producto">
+    <input id="cantidad" type="number" placeholder="Cantidad" min="1" step="1">
+    <input id="precio" type="number" placeholder="Precio" min="0" step="0.01">
+    <button class="agregar" type="button" onclick="agregarProducto()">Agregar</button>
+  </div>
 
-<table class="resumen">
-<tr>
-<td></td>
-<td class="derecha">Subtotal</td>
-<td class="derecha" id="subtotal">RD$0.00</td>
-</tr>
+  <table>
+    <thead>
+      <tr>
+        <th>Producto</th>
+        <th class="derecha">Cant</th>
+        <th class="derecha">P.Unit</th>
+        <th class="derecha">Total</th>
+      </tr>
+    </thead>
+    <tbody id="tablaProductos"></tbody>
+  </table>
 
-<tr id="filaItbis">
-<td></td>
-<td class="derecha">ITBIS</td>
-<td class="derecha" id="itbis">RD$0.00</td>
-</tr>
+  <table class="resumen">
+    <tr>
+      <td></td>
+      <td class="derecha">Subtotal</td>
+      <td class="derecha" id="subtotal">RD$0.00</td>
+    </tr>
 
-<tr class="total">
-<td></td>
-<td class="derecha">Total</td>
-<td class="derecha" id="total">RD$0.00</td>
-</tr>
-</table>
+    <tr id="filaItbis">
+      <td></td>
+      <td class="derecha">ITBIS</td>
+      <td class="derecha" id="itbis">RD$0.00</td>
+    </tr>
 
-<button class="imprimir" type="button" onclick="window.print()">Imprimir</button>
+    <tr class="total">
+      <td></td>
+      <td class="derecha">Total</td>
+      <td class="derecha" id="total">RD$0.00</td>
+    </tr>
+  </table>
 
+  <button class="imprimir" type="button" onclick="window.print()">Imprimir</button>
 </div>
 
 <!-- MODAL AJUSTES -->
 <div class="modal" id="modalAjustes">
-<div class="modal-content">
+  <div class="modal-content">
+    <h3>Ajustes</h3>
 
-<h3>Ajustes</h3>
+    <label for="empresaInput">Nombre empresa</label>
+    <input id="empresaInput">
 
-<label for="empresaInput">Nombre empresa</label>
-<input id="empresaInput">
+    <label for="rncInput">RNC</label>
+    <input id="rncInput">
 
-<label for="rncInput">RNC</label>
-<input id="rncInput">
+    <label for="logoInput">Logo</label>
+    <input type="file" id="logoInput" accept="image/*">
 
-<label for="logoInput">Logo</label>
-<input type="file" id="logoInput" accept="image/*">
+    <div id="dropArea">Arrastra logo aquí</div>
 
-<div id="dropArea">
-Arrastra logo aquí
+    <div class="toggle">
+      <span>ITBIS</span>
+      <div id="toggleItbis" class="switch"></div>
+    </div>
+
+    <button type="button" onclick="guardarAjustes()">Guardar</button>
+  </div>
 </div>
 
-<div class="toggle">
-<span>ITBIS</span>
-<div id="toggleItbis" class="switch"></div>
-</div>
-
-<button type="button" onclick="guardarAjustes()">Guardar</button>
-
-</div>
-</div>
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const now = new Date();
+const SUPABASE_URL = "https://exiedneezuzkdqfeqxlq.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4aWVkbmVlenV6a2RxZmVxeGxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMTAxODAsImV4cCI6MjA4ODU4NjE4MH0.bVV5mlGZURw_H-xw0kVN9dI8jQ4NN9dgPQ9HlN4krEY";
+
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const numeroFactura = document.getElementById("numeroFactura");
 const fecha = document.getElementById("fecha");
@@ -486,152 +593,326 @@ const itbisEl = document.getElementById("itbis");
 const totalEl = document.getElementById("total");
 const filaItbis = document.getElementById("filaItbis");
 const tablaProductos = document.getElementById("tablaProductos");
+const loginBox = document.getElementById("loginBox");
+const facturaBox = document.getElementById("facturaBox");
+const authMsg = document.getElementById("authMsg");
+const clienteNombre = document.getElementById("clienteNombre");
+const clienteResumen = document.getElementById("clienteResumen");
 
-numeroFactura.textContent = "JS-" + now.getTime();
-fecha.textContent = now.toLocaleDateString("es-DO");
-
+let currentUser = null;
 let totalGeneral = 0;
 
+let config = {
+  empresa: "JeanSkirt",
+  rnc: "",
+  itbis: true,
+  logo: ""
+};
+
+function resetFacturaMeta(){
+  const now = new Date();
+  numeroFactura.textContent = "JS-" + now.getTime();
+  fecha.textContent = now.toLocaleDateString("es-DO");
+}
+
+resetFacturaMeta();
+
+function toggle(el){
+  el.classList.toggle("active");
+}
+
+function updateClienteResumen(){
+  if(!toggleCliente.classList.contains("active")){
+    clienteResumen.style.display = "none";
+    clienteResumen.innerHTML = "";
+    return;
+  }
+
+  const nombre = clienteNombre.value.trim();
+  const esEmpresa = toggleEmpresa.classList.contains("active");
+
+  if(!nombre){
+    clienteResumen.style.display = "none";
+    clienteResumen.innerHTML = "";
+    return;
+  }
+
+  if(esEmpresa){
+    clienteResumen.innerHTML = `<strong>Cliente:</strong> ${nombre}<br><strong>RNC:</strong> ${config.rnc || ""}`;
+  } else {
+    clienteResumen.innerHTML = `<strong>Cliente:</strong> ${nombre}`;
+  }
+
+  clienteResumen.style.display = "block";
+}
+
 function agregarProducto(){
-const nombreInput = document.getElementById("nombre");
-const cantidadInput = document.getElementById("cantidad");
-const precioInput = document.getElementById("precio");
+  const nombreInput = document.getElementById("nombre");
+  const cantidadInput = document.getElementById("cantidad");
+  const precioInput = document.getElementById("precio");
 
-const nombre = nombreInput.value.trim();
-const cantidad = parseFloat(cantidadInput.value);
-const precio = parseFloat(precioInput.value);
+  const nombre = nombreInput.value.trim();
+  const cantidad = parseFloat(cantidadInput.value);
+  const precio = parseFloat(precioInput.value);
 
-if(!nombre || isNaN(cantidad) || isNaN(precio) || cantidad <= 0 || precio < 0) return;
+  if(!nombre || isNaN(cantidad) || isNaN(precio) || cantidad <= 0 || precio < 0) return;
 
-const total = cantidad * precio;
-totalGeneral += total;
+  const total = cantidad * precio;
+  totalGeneral += total;
 
-tablaProductos.innerHTML += `
-<tr>
-<td>${nombre}</td>
-<td class="derecha">${cantidad}</td>
-<td class="derecha">RD$${precio.toFixed(2)}</td>
-<td class="derecha">RD$${total.toFixed(2)}</td>
-</tr>`;
+  tablaProductos.innerHTML += `
+  <tr>
+    <td>${nombre}</td>
+    <td class="derecha">${cantidad}</td>
+    <td class="derecha">RD$${precio.toFixed(2)}</td>
+    <td class="derecha">RD$${total.toFixed(2)}</td>
+  </tr>`;
 
-calcular();
+  calcular();
 
-nombreInput.value = "";
-cantidadInput.value = "";
-precioInput.value = "";
-nombreInput.focus();
+  nombreInput.value = "";
+  cantidadInput.value = "";
+  precioInput.value = "";
+  nombreInput.focus();
 }
 
 function calcular(){
-if(config.itbis){
-const subtotal = totalGeneral / 1.18;
-const itbis = totalGeneral - subtotal;
+  if(config.itbis){
+    const subtotal = totalGeneral / 1.18;
+    const itbis = totalGeneral - subtotal;
 
-subtotalEl.textContent = "RD$" + subtotal.toFixed(2);
-itbisEl.textContent = "RD$" + itbis.toFixed(2);
-filaItbis.style.display = "";
-}else{
-subtotalEl.textContent = "RD$" + totalGeneral.toFixed(2);
-itbisEl.textContent = "RD$0.00";
-filaItbis.style.display = "none";
+    subtotalEl.textContent = "RD$" + subtotal.toFixed(2);
+    itbisEl.textContent = "RD$" + itbis.toFixed(2);
+    filaItbis.style.display = "";
+  } else {
+    subtotalEl.textContent = "RD$" + totalGeneral.toFixed(2);
+    itbisEl.textContent = "RD$0.00";
+    filaItbis.style.display = "none";
+  }
+
+  totalEl.textContent = "RD$" + totalGeneral.toFixed(2);
 }
-
-totalEl.textContent = "RD$" + totalGeneral.toFixed(2);
-}
-
-let config = JSON.parse(localStorage.getItem("config")) || {
-empresa:"JeanSkirt",
-rnc:"",
-itbis:true,
-logo:""
-};
 
 function cargarConfig(){
-empresaNombre.textContent = config.empresa || "JeanSkirt";
-empresaInput.value = config.empresa || "JeanSkirt";
-rncInput.value = config.rnc || "";
-rncTexto.textContent = config.rnc || "";
+  empresaNombre.textContent = config.empresa || "JeanSkirt";
+  empresaInput.value = config.empresa || "JeanSkirt";
+  rncInput.value = config.rnc || "";
+  rncTexto.textContent = config.rnc || "";
+  logoImg.src = config.logo || "";
 
-logoImg.src = config.logo || "";
-
-toggleItbis.classList.toggle("active", !!config.itbis);
-
-calcular();
+  toggleItbis.classList.toggle("active", !!config.itbis);
+  updateClienteResumen();
+  calcular();
 }
 
-function guardarAjustes(){
-config.empresa = empresaInput.value.trim() || "JeanSkirt";
-config.rnc = rncInput.value.trim();
-config.itbis = toggleItbis.classList.contains("active");
+async function ensureProfile(user){
+  const { data, error } = await supabaseClient
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .maybeSingle();
 
-localStorage.setItem("config", JSON.stringify(config));
-cargarConfig();
-modalAjustes.style.display = "none";
+  if(error){
+    console.error(error);
+    return null;
+  }
+
+  if(!data){
+    const defaultProfile = {
+      id: user.id,
+      email: user.email,
+      empresa: "JeanSkirt",
+      rnc: "",
+      itbis: true,
+      logo: ""
+    };
+
+    const { error: insertError } = await supabaseClient
+      .from("profiles")
+      .insert(defaultProfile);
+
+    if(insertError){
+      console.error(insertError);
+      return null;
+    }
+
+    return defaultProfile;
+  }
+
+  return data;
+}
+
+async function loadUserProfile(){
+  const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+
+  if(userError || !userData?.user){
+    return;
+  }
+
+  currentUser = userData.user;
+
+  const profile = await ensureProfile(currentUser);
+  if(!profile) return;
+
+  config.empresa = profile.empresa || "JeanSkirt";
+  config.rnc = profile.rnc || "";
+  config.itbis = typeof profile.itbis === "boolean" ? profile.itbis : true;
+  config.logo = profile.logo || "";
+
+  cargarConfig();
+
+  loginBox.style.display = "none";
+  facturaBox.style.display = "block";
+}
+
+async function registerUser(){
+  const email = document.getElementById("authEmail").value.trim();
+  const password = document.getElementById("authPassword").value.trim();
+
+  if(!email || !password){
+    authMsg.textContent = "Completa correo y contraseña.";
+    return;
+  }
+
+  const { error } = await supabaseClient.auth.signUp({
+    email,
+    password
+  });
+
+  authMsg.textContent = error
+    ? error.message
+    : "Cuenta creada. Si Supabase pide confirmación, revisa tu correo.";
+}
+
+async function loginUser(){
+  const email = document.getElementById("authEmail").value.trim();
+  const password = document.getElementById("authPassword").value.trim();
+
+  if(!email || !password){
+    authMsg.textContent = "Completa correo y contraseña.";
+    return;
+  }
+
+  const { error } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if(error){
+    authMsg.textContent = error.message;
+    return;
+  }
+
+  authMsg.textContent = "Sesión iniciada.";
+  await loadUserProfile();
+}
+
+async function logoutUser(){
+  await supabaseClient.auth.signOut();
+  currentUser = null;
+  loginBox.style.display = "block";
+  facturaBox.style.display = "none";
+  authMsg.textContent = "Sesión cerrada.";
+}
+
+async function guardarAjustes(){
+  config.empresa = empresaInput.value.trim() || "JeanSkirt";
+  config.rnc = rncInput.value.trim();
+  config.itbis = toggleItbis.classList.contains("active");
+
+  if(currentUser){
+    const { error } = await supabaseClient
+      .from("profiles")
+      .upsert({
+        id: currentUser.id,
+        email: currentUser.email,
+        empresa: config.empresa,
+        rnc: config.rnc,
+        itbis: config.itbis,
+        logo: config.logo || ""
+      });
+
+    if(error){
+      console.error(error);
+      return;
+    }
+  }
+
+  cargarConfig();
+  modalAjustes.style.display = "none";
 }
 
 function abrirAjustes(){
-modalAjustes.style.display = "flex";
-}
-
-function toggle(el){
-el.classList.toggle("active");
+  modalAjustes.style.display = "flex";
 }
 
 toggleCliente.onclick = () => {
-toggle(toggleCliente);
-clienteArea.style.display = toggleCliente.classList.contains("active") ? "block" : "none";
+  toggle(toggleCliente);
+  clienteArea.style.display = toggleCliente.classList.contains("active") ? "block" : "none";
 
-if(!toggleCliente.classList.contains("active")){
-toggleEmpresa.classList.remove("active");
-rncMostrar.style.display = "none";
-}
+  if(!toggleCliente.classList.contains("active")){
+    toggleEmpresa.classList.remove("active");
+    rncMostrar.style.display = "none";
+  }
+
+  updateClienteResumen();
 };
 
 toggleEmpresa.onclick = () => {
-toggle(toggleEmpresa);
-rncMostrar.style.display = toggleEmpresa.classList.contains("active") ? "block" : "none";
+  if(!toggleCliente.classList.contains("active")) return;
+  toggle(toggleEmpresa);
+  rncMostrar.style.display = toggleEmpresa.classList.contains("active") ? "block" : "none";
+  updateClienteResumen();
 };
 
 toggleItbis.onclick = () => {
-toggle(toggleItbis);
-config.itbis = toggleItbis.classList.contains("active");
-calcular();
+  toggle(toggleItbis);
+  config.itbis = toggleItbis.classList.contains("active");
+  calcular();
 };
+
+clienteNombre.addEventListener("input", updateClienteResumen);
 
 logoInput.onchange = e => {
-const file = e.target.files[0];
-if(!file) return;
+  const file = e.target.files[0];
+  if(!file) return;
 
-const reader = new FileReader();
-reader.onload = function(){
-config.logo = reader.result;
-logoImg.src = reader.result;
-};
-reader.readAsDataURL(file);
+  const reader = new FileReader();
+  reader.onload = function(){
+    config.logo = reader.result;
+    logoImg.src = reader.result;
+  };
+  reader.readAsDataURL(file);
 };
 
 dropArea.ondragover = e => e.preventDefault();
 
 dropArea.ondrop = e => {
-e.preventDefault();
-const file = e.dataTransfer.files[0];
-if(!file) return;
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if(!file) return;
 
-const reader = new FileReader();
-reader.onload = function(){
-config.logo = reader.result;
-logoImg.src = reader.result;
-};
-reader.readAsDataURL(file);
+  const reader = new FileReader();
+  reader.onload = function(){
+    config.logo = reader.result;
+    logoImg.src = reader.result;
+  };
+  reader.readAsDataURL(file);
 };
 
 modalAjustes.addEventListener("click", (e) => {
-if(e.target === modalAjustes){
-modalAjustes.style.display = "none";
-}
+  if(e.target === modalAjustes){
+    modalAjustes.style.display = "none";
+  }
 });
 
-cargarConfig();
+supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+  if(session?.user){
+    await loadUserProfile();
+  }
+});
+
+loadUserProfile();
 </script>
 
 </body>
