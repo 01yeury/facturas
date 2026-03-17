@@ -1,312 +1,245 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>FactuApp</title>
-
-<style>
-
-body{
-font-family:Segoe UI;
-margin:0;
-background:#f4f6fb;
-}
-
-.container{
-max-width:900px;
-margin:auto;
-padding:20px;
-}
-
-.card{
-background:white;
-padding:20px;
-border-radius:12px;
-margin-bottom:20px;
-box-shadow:0 10px 20px rgba(0,0,0,0.1);
-}
-
-input,button,select{
-padding:10px;
-margin:5px 0;
-width:100%;
-}
-
-button{
-background:#2563eb;
-color:white;
-border:none;
-cursor:pointer;
-}
-
-.hidden{
-display:none;
-}
-
-</style>
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JeanSkirt POS</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
-
 <body>
-
-<div class="container">
-
-<!-- LOGIN -->
-<div id="loginView" class="card">
-<h2>Login</h2>
-
-<input id="email" placeholder="Email">
-<input id="password" type="password" placeholder="Password">
-
-<button onclick="login()">Entrar</button>
-<button onclick="signup()">Crear Cuenta</button>
-
-<p id="msg"></p>
-</div>
-
-<!-- DASHBOARD -->
-<div id="appView" class="hidden">
-
-<div class="card">
-<h2>Dashboard</h2>
-
-<p id="planText"></p>
-<p id="limitText"></p>
-
-<button onclick="showSection('invoice')">Nueva Factura</button>
-<button onclick="showSection('client')">Clientes</button>
-<button onclick="showSection('product')">Productos</button>
-<button onclick="logout()">Cerrar sesión</button>
-
-</div>
-
-<!-- CLIENT -->
-<div id="clientSection" class="card hidden">
-<h3>Crear Cliente</h3>
-<input id="clientName" placeholder="Nombre">
-<input id="clientRnc" placeholder="RNC">
-
-<button onclick="saveClient()">Guardar Cliente</button>
-</div>
-
-<!-- PRODUCT -->
-<div id="productSection" class="card hidden">
-<h3>Crear Producto</h3>
-<input id="prodName" placeholder="Nombre">
-<input id="prodPrice" type="number" placeholder="Precio">
-
-<button onclick="saveProduct()">Guardar Producto</button>
-</div>
-
-<!-- INVOICE -->
-<div id="invoiceSection" class="card hidden">
-
-<h3>Nueva Factura</h3>
-
-<input id="invoiceNumber" placeholder="Número factura">
-<input id="invoiceClient" placeholder="Nombre Cliente">
-
-<input id="itemDesc" placeholder="Descripción">
-<input id="itemQty" type="number" placeholder="Cantidad">
-<input id="itemPrice" type="number" placeholder="Precio">
-
-<button onclick="addItem()">Agregar Item</button>
-
-<div id="items"></div>
-
-<h4 id="totalText">Total: 0</h4>
-
-<button onclick="printInvoice()">Imprimir y Guardar</button>
-
-</div>
-
-</div>
-
-</div>
-
-<script type="module">
-
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const supabase = createClient(
-"https://exiedneezuzkdqfeqxlq.supabase.co",
-"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4aWVkbmVlenV6a2RxZmVxeGxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMTAxODAsImV4cCI6MjA4ODU4NjE4MH0.bVV5mlGZURw_H-xw0kVN9dI8jQ4NN9dgPQ9HlN4krEY"
-)
-
-let user=null
-let items=[]
-let total=0
-
-window.showSection=(s)=>{
-document.getElementById("clientSection").classList.add("hidden")
-document.getElementById("productSection").classList.add("hidden")
-document.getElementById("invoiceSection").classList.add("hidden")
-
-if(s==="client") document.getElementById("clientSection").classList.remove("hidden")
-if(s==="product") document.getElementById("productSection").classList.remove("hidden")
-if(s==="invoice") document.getElementById("invoiceSection").classList.remove("hidden")
-}
-
-window.signup=async()=>{
-let email=document.getElementById("email").value
-let password=document.getElementById("password").value
-
-let {data,error}=await supabase.auth.signUp({email,password})
-
-if(error) return alert(error.message)
-
-alert("Cuenta creada")
-}
-
-window.login=async()=>{
-let email=document.getElementById("email").value
-let password=document.getElementById("password").value
-
-let {data,error}=await supabase.auth.signInWithPassword({email,password})
-
-if(error) return alert(error.message)
-
-user=data.user
-
-document.getElementById("loginView").classList.add("hidden")
-document.getElementById("appView").classList.remove("hidden")
-
-loadPlan()
-}
-
-window.logout=async()=>{
-await supabase.auth.signOut()
-location.reload()
-}
-
-async function loadPlan(){
-
-let {data}=await supabase
-.from("profiles")
-.select("plan")
-.eq("id",user.id)
-.single()
-
-let plan=data?.plan || "basic"
-
-document.getElementById("planText").innerText="Plan: "+plan
-
-let {count}=await supabase
-.from("invoices")
-.select("*",{count:"exact",head:true})
-.eq("user_id",user.id)
-
-let remain=10-count
-
-if(plan==="premium") remain="Ilimitadas"
-
-document.getElementById("limitText").innerText="Facturas disponibles: "+remain
-
-}
-
-window.saveClient=async()=>{
-await supabase.from("clients").insert({
-user_id:user.id,
-name:document.getElementById("clientName").value,
-rnc:document.getElementById("clientRnc").value
-})
-alert("Cliente guardado")
-}
-
-window.saveProduct=async()=>{
-await supabase.from("products").insert({
-user_id:user.id,
-name:document.getElementById("prodName").value,
-price:document.getElementById("prodPrice").value
-})
-alert("Producto guardado")
-}
-
-window.addItem=()=>{
-let desc=document.getElementById("itemDesc").value
-let qty=Number(document.getElementById("itemQty").value)
-let price=Number(document.getElementById("itemPrice").value)
-
-let line=qty*price
-
-items.push({desc,qty,price,line})
-
-total+=line
-
-renderItems()
-}
-
-function renderItems(){
-let div=document.getElementById("items")
-div.innerHTML=""
-
-items.forEach(i=>{
-div.innerHTML+=i.desc+" - "+i.line+"<br>"
-})
-
-document.getElementById("totalText").innerText="Total: "+total
-}
-
-window.printInvoice=async()=>{
-
-let {data}=await supabase
-.from("profiles")
-.select("plan")
-.eq("id",user.id)
-.single()
-
-let plan=data.plan
-
-if(plan==="basic"){
-
-let {count}=await supabase
-.from("invoices")
-.select("*",{count:"exact",head:true})
-.eq("user_id",user.id)
-
-if(count>=10){
-alert("Limite alcanzado")
-return
-}
-
-}
-
-let {data:inv}=await supabase
-.from("invoices")
-.insert({
-user_id:user.id,
-invoice_number:document.getElementById("invoiceNumber").value,
-client_name:document.getElementById("invoiceClient").value,
-total:total
-})
-.select()
-.single()
-
-let invoiceId=inv.id
-
-for(let i of items){
-
-await supabase.from("invoice_items").insert({
-invoice_id:invoiceId,
-description:i.desc,
-quantity:i.qty,
-unit_price:i.price,
-line_total:i.line
-})
-
-}
-
-window.print()
-
-alert("Factura guardada")
-
-items=[]
-total=0
-renderItems()
-
-}
-
-</script>
-
+  <div id="loginView" class="auth-shell">
+    <div class="auth-card">
+      <h1>JeanSkirt POS</h1>
+      <p class="muted">Inicia sesión para cargar tu empresa, ajustes y facturas.</p>
+
+      <input id="authEmail" type="email" placeholder="Correo" />
+      <input id="authPassword" type="password" placeholder="Contraseña" />
+
+      <div class="auth-actions">
+        <button id="btnLogin" class="primary">Entrar</button>
+        <button id="btnRegister" class="secondary">Crear cuenta</button>
+      </div>
+
+      <p id="authMessage" class="status-text"></p>
+    </div>
+  </div>
+
+  <div id="appShell" class="app-shell hidden">
+    <header class="topbar">
+      <div>
+        <div id="headerCompany" class="topbar-company">JeanSkirt</div>
+        <div id="headerTitle" class="topbar-title">Inicio</div>
+      </div>
+      <button id="btnLogout" class="ghost-btn">Salir</button>
+    </header>
+
+    <main class="main-content">
+      <section id="view-dashboard" class="view active">
+        <div class="hero-card">
+          <div>
+            <div class="eyebrow">Empresa</div>
+            <h2 id="dashboardCompany">JeanSkirt</h2>
+            <p class="muted">Tu panel principal de facturación.</p>
+          </div>
+          <button id="btnGoFactura" class="primary large-btn">Nueva factura</button>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Ventas de hoy</div>
+            <div id="statTodaySales" class="stat-value">RD$0.00</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Facturas hoy</div>
+            <div id="statTodayCount" class="stat-value">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Ventas del mes</div>
+            <div id="statMonthSales" class="stat-value">RD$0.00</div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-head">
+            <h3>Últimas facturas</h3>
+            <button id="btnRefreshDashboard" class="ghost-btn small-btn">Actualizar</button>
+          </div>
+          <div id="dashboardRecentInvoices" class="list-stack empty-state">Aún no hay facturas.</div>
+        </div>
+      </section>
+
+      <section id="view-factura" class="view">
+        <div class="section-card">
+          <div class="invoice-head">
+            <div>
+              <div class="eyebrow">Factura</div>
+              <h2 id="empresaNombre">JeanSkirt</h2>
+            </div>
+            <div id="logoPreviewBox" class="logo-preview-box">
+              <img id="logoImg" src="" alt="Logo" />
+            </div>
+          </div>
+
+          <div class="invoice-meta">
+            <div><strong>Factura No:</strong> <span id="numeroFactura"></span></div>
+            <div><strong>Fecha:</strong> <span id="fechaFactura"></span></div>
+          </div>
+
+          <div class="toggle-row">
+            <span>Cliente</span>
+            <button id="toggleCliente" class="toggle-switch" type="button" aria-pressed="false"></button>
+          </div>
+
+          <div id="clienteArea" class="hidden">
+            <input id="clienteNombre" placeholder="Nombre del cliente" />
+
+            <div class="toggle-row">
+              <span>Empresa</span>
+              <button id="toggleEmpresa" class="toggle-switch" type="button" aria-pressed="false"></button>
+            </div>
+
+            <div id="rncMostrar" class="inline-note hidden">
+              <strong>RNC:</strong> <span id="rncTexto"></span>
+            </div>
+          </div>
+
+          <div id="clienteResumen" class="summary-box hidden"></div>
+
+          <div class="product-form">
+            <input id="productoNombre" placeholder="Producto" />
+            <input id="productoCantidad" type="number" min="1" step="1" placeholder="Cantidad" />
+            <input id="productoPrecio" type="number" min="0" step="0.01" placeholder="Precio" />
+            <button id="btnAgregarProducto" class="primary" type="button">Agregar</button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th class="right">Cant.</th>
+                  <th class="right">P. Unit</th>
+                  <th class="right">Total</th>
+                  <th class="right">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tablaProductos">
+                <tr>
+                  <td colspan="5" class="empty-cell">No hay productos agregados.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="totals-box">
+            <div class="totals-row">
+              <span>Subtotal</span>
+              <strong id="subtotalFactura">RD$0.00</strong>
+            </div>
+            <div id="itbisRow" class="totals-row">
+              <span>ITBIS</span>
+              <strong id="itbisFactura">RD$0.00</strong>
+            </div>
+            <div class="totals-row total-row">
+              <span>Total</span>
+              <strong id="totalFactura">RD$0.00</strong>
+            </div>
+          </div>
+
+          <div class="invoice-actions">
+            <button id="btnGuardarFactura" class="primary large-btn" type="button">Guardar factura</button>
+            <button id="btnImprimirFactura" class="secondary" type="button">Imprimir</button>
+          </div>
+
+          <p id="facturaMessage" class="status-text"></p>
+        </div>
+      </section>
+
+      <section id="view-historial" class="view">
+        <div class="section-card">
+          <div class="section-head">
+            <h3>Historial de facturas</h3>
+            <button id="btnRefreshHistorial" class="ghost-btn small-btn">Actualizar</button>
+          </div>
+
+          <input id="historialSearch" placeholder="Buscar por cliente o número de factura" />
+          <div id="historialList" class="list-stack empty-state">No hay facturas registradas.</div>
+        </div>
+      </section>
+
+      <section id="view-clientes" class="view">
+        <div class="section-card">
+          <div class="section-head">
+            <h3>Clientes</h3>
+            <button id="btnRefreshClientes" class="ghost-btn small-btn">Actualizar</button>
+          </div>
+
+          <div class="client-form">
+            <input id="clienteNuevoNombre" placeholder="Nombre del cliente" />
+            <input id="clienteNuevoRnc" placeholder="RNC (opcional)" />
+            <button id="btnGuardarCliente" class="primary" type="button">Guardar cliente</button>
+          </div>
+
+          <p id="clientesMessage" class="status-text"></p>
+          <div id="clientesList" class="list-stack empty-state">No hay clientes guardados.</div>
+        </div>
+      </section>
+
+      <section id="view-ajustes" class="view">
+        <div class="section-card">
+          <div class="section-head">
+            <h3>Ajustes</h3>
+          </div>
+
+          <div class="settings-grid">
+            <div>
+              <label for="empresaInput">Nombre empresa</label>
+              <input id="empresaInput" />
+            </div>
+
+            <div>
+              <label for="rncInput">RNC</label>
+              <input id="rncInput" />
+            </div>
+
+            <div>
+              <label for="logoInput">Logo</label>
+              <input id="logoInput" type="file" accept="image/*" />
+            </div>
+
+            <div>
+              <label>Vista previa</label>
+              <div id="dropArea" class="drop-area">Arrastra logo aquí</div>
+            </div>
+          </div>
+
+          <div class="toggle-row">
+            <span>ITBIS</span>
+            <button id="toggleItbis" class="toggle-switch" type="button" aria-pressed="false"></button>
+          </div>
+
+          <div class="settings-preview">
+            <div class="logo-preview-box settings-logo-box">
+              <img id="logoSettingsPreview" src="" alt="Vista previa del logo" />
+            </div>
+          </div>
+
+          <button id="btnGuardarAjustes" class="primary large-btn" type="button">Guardar ajustes</button>
+          <p id="ajustesMessage" class="status-text"></p>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-view="dashboard" type="button">Inicio</button>
+      <button class="nav-item" data-view="factura" type="button">Facturar</button>
+      <button class="nav-item" data-view="historial" type="button">Historial</button>
+      <button class="nav-item" data-view="clientes" type="button">Clientes</button>
+      <button class="nav-item" data-view="ajustes" type="button">Ajustes</button>
+    </nav>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js"></script>
 </body>
 </html>
