@@ -37,7 +37,7 @@ body{
 }
 .auth-card h1{margin:0 0 8px;font-size:28px;}
 .muted{color:var(--muted);}
-.auth-card input,.main-content input{
+.auth-card input,.main-content input, .main-content select{
   width:100%;
   border:1px solid #d1d5db;
   border-radius:12px;
@@ -310,4 +310,48 @@ label{
   .view,.view.active{display:none !important;}
   #view-factura{display:block !important;}
   .section-card,.hero-card,.stat-card{box-shadow:none;border-radius:0;}
+}
+
+.autocomplete-wrap{
+  position:relative;
+  width:100%;
+}
+
+.autocomplete-list{
+  position:absolute;
+  top:100%;
+  left:0;
+  right:0;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:12px;
+  box-shadow:var(--shadow);
+  z-index:30;
+  max-height:220px;
+  overflow:auto;
+  margin-top:6px;
+}
+
+.autocomplete-item{
+  padding:12px 14px;
+  border-bottom:1px solid var(--line);
+  cursor:pointer;
+  background:#fff;
+}
+
+.autocomplete-item:last-child{
+  border-bottom:none;
+}
+
+.autocomplete-item:hover{
+  background:#f3f4f6;
+}
+
+.autocomplete-title{
+  font-weight:700;
+}
+
+.autocomplete-meta{
+  font-size:13px;
+  color:var(--muted);
 }
