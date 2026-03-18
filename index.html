@@ -91,7 +91,11 @@
           </div>
 
           <div id="clienteArea" class="hidden">
-            <input id="clienteNombre" placeholder="Nombre del cliente" />
+            
+            <div class="autocomplete-wrap">
+              <input id="clienteNombre" placeholder="Cliente" autocomplete="off" />
+              <div id="clienteSuggestions" class="autocomplete-list hidden"></div>
+            </div>
 
             <div class="toggle-row">
               <span>Empresa</span>
@@ -106,7 +110,12 @@
           <div id="clienteResumen" class="summary-box hidden"></div>
 
           <div class="product-form">
-            <input id="productoNombre" placeholder="Producto" />
+            
+            <div class="autocomplete-wrap">
+              <input id="productoNombre" placeholder="Producto" autocomplete="off" />
+              <div id="productoSuggestions" class="autocomplete-list hidden"></div>
+            </div>
+
             <input id="productoCantidad" type="number" min="1" step="1" placeholder="Cantidad" />
             <input id="productoPrecio" type="number" min="0" step="0.01" placeholder="Precio" />
             <button id="btnAgregarProducto" class="primary" type="button">Agregar</button>
@@ -167,23 +176,97 @@
         </div>
       </section>
 
-      <section id="view-clientes" class="view">
+      <section id="view-factura-detalle" class="view">
         <div class="section-card">
           <div class="section-head">
-            <h3>Clientes</h3>
-            <button id="btnRefreshClientes" class="ghost-btn small-btn">Actualizar</button>
+            <h3>Detalle de factura</h3>
+            <button id="btnVolverHistorial" class="ghost-btn small-btn">Volver</button>
           </div>
 
-          <div class="client-form">
-            <input id="clienteNuevoNombre" placeholder="Nombre del cliente" />
-            <input id="clienteNuevoRnc" placeholder="RNC (opcional)" />
-            <button id="btnGuardarCliente" class="primary" type="button">Guardar cliente</button>
+          <div class="summary-box">
+            <div><strong>Número:</strong> <span id="detalleInvoiceNumber"></span></div>
+            <div><strong>Fecha:</strong> <span id="detalleInvoiceDate"></span></div>
+            <div><strong>Cliente:</strong> <span id="detalleClientName"></span></div>
+            <div><strong>RNC:</strong> <span id="detalleClientRnc"></span></div>
+            <div><strong>Empresa:</strong> <span id="detalleBusinessName"></span></div>
           </div>
 
-          <p id="clientesMessage" class="status-text"></p>
-          <div id="clientesList" class="list-stack empty-state">No hay clientes guardados.</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Descripción</th>
+                  <th class="right">Cant.</th>
+                  <th class="right">P. Unit</th>
+                  <th class="right">Total</th>
+                </tr>
+              </thead>
+              <tbody id="detalleItemsTable">
+                <tr>
+                  <td colspan="4" class="empty-cell">No hay items.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="totals-box">
+            <div class="totals-row">
+              <span>Subtotal</span>
+              <strong id="detalleSubtotal">RD$0.00</strong>
+            </div>
+            <div class="totals-row">
+              <span>ITBIS</span>
+              <strong id="detalleTax">RD$0.00</strong>
+            </div>
+            <div class="totals-row total-row">
+              <span>Total</span>
+              <strong id="detalleTotal">RD$0.00</strong>
+            </div>
+          </div>
+
+          <div class="invoice-actions">
+            <button id="btnImprimirDetalle" class="primary" type="button">Imprimir</button>
+          </div>
         </div>
       </section>
+
+            <section id="view-clientes" class="view">
+              <div class="section-card">
+                <div class="section-head">
+                  <h3>Clientes</h3>
+                  <button id="btnRefreshClientes" class="ghost-btn small-btn">Actualizar</button>
+                </div>
+
+                <div class="client-form">
+                  <input id="clienteNuevoNombre" placeholder="Nombre del cliente" />
+                  <input id="clienteNuevoRnc" placeholder="RNC (opcional)" />
+                  <button id="btnGuardarCliente" class="primary" type="button">Guardar cliente</button>
+                </div>
+
+                <p id="clientesMessage" class="status-text"></p>
+                <div id="clientesList" class="list-stack empty-state">No hay clientes guardados.</div>
+              </div>
+            </section>
+
+            <section id="view-productos" class="view">
+              <div class="section-card">
+                <div class="section-head">
+                  <h3>Productos</h3>
+                  <button id="btnRefreshProductos" class="ghost-btn small-btn">Actualizar</button>
+                </div>
+
+                <div class="client-form">
+                  <input id="productoNuevoNombre" placeholder="Nombre del producto" />
+                  <input id="productoNuevoPrecio" type="number" min="0" step="0.01" placeholder="Precio" />
+                  <button id="btnGuardarProducto" class="primary" type="button">Guardar producto</button>
+                </div>
+
+                <input id="productoNuevaDescripcion" placeholder="Descripción (opcional)" />
+
+                <p id="productosMessage" class="status-text"></p>
+                <div id="productosList" class="list-stack empty-state">No hay productos guardados.</div>
+              </div>
+            </section>
 
       <section id="view-ajustes" class="view">
         <div class="section-card">
@@ -235,6 +318,7 @@
       <button class="nav-item" data-view="factura" type="button">Facturar</button>
       <button class="nav-item" data-view="historial" type="button">Historial</button>
       <button class="nav-item" data-view="clientes" type="button">Clientes</button>
+      <button class="nav-item" data-view="productos" type="button">Productos</button>
       <button class="nav-item" data-view="ajustes" type="button">Ajustes</button>
     </nav>
   </div>
