@@ -5,10 +5,20 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 const state = {
   currentUser: null,
   currentView: "dashboard",
-  config: { empresa: "JeanSkirt", rnc: "", itbis: true, logo: "" },
+  config: {
+    empresa: "JeanSkirt",
+    rnc: "",
+    itbis: true,
+    logo: ""
+  },
   invoiceItems: [],
   invoices: [],
-  clients: []
+  clients: [],
+  products: [],
+  selectedProductId: null,
+  selectedClientId: null,
+  selectedInvoice: null,
+  selectedInvoiceItems: []
 };
 
 const el = {
@@ -20,9 +30,11 @@ const el = {
   btnLogin: document.getElementById("btnLogin"),
   btnRegister: document.getElementById("btnRegister"),
   btnLogout: document.getElementById("btnLogout"),
+
   headerCompany: document.getElementById("headerCompany"),
   headerTitle: document.getElementById("headerTitle"),
   navItems: document.querySelectorAll(".nav-item"),
+
   dashboardCompany: document.getElementById("dashboardCompany"),
   statTodaySales: document.getElementById("statTodaySales"),
   statTodayCount: document.getElementById("statTodayCount"),
@@ -30,19 +42,24 @@ const el = {
   dashboardRecentInvoices: document.getElementById("dashboardRecentInvoices"),
   btnGoFactura: document.getElementById("btnGoFactura"),
   btnRefreshDashboard: document.getElementById("btnRefreshDashboard"),
+
   empresaNombre: document.getElementById("empresaNombre"),
   logoImg: document.getElementById("logoImg"),
   logoSettingsPreview: document.getElementById("logoSettingsPreview"),
   numeroFactura: document.getElementById("numeroFactura"),
   fechaFactura: document.getElementById("fechaFactura"),
+
   toggleCliente: document.getElementById("toggleCliente"),
   toggleEmpresa: document.getElementById("toggleEmpresa"),
   clienteArea: document.getElementById("clienteArea"),
   clienteNombre: document.getElementById("clienteNombre"),
+  clienteSuggestions: document.getElementById("clienteSuggestions"),
   rncMostrar: document.getElementById("rncMostrar"),
   rncTexto: document.getElementById("rncTexto"),
   clienteResumen: document.getElementById("clienteResumen"),
+
   productoNombre: document.getElementById("productoNombre"),
+  productoSuggestions: document.getElementById("productoSuggestions"),
   productoCantidad: document.getElementById("productoCantidad"),
   productoPrecio: document.getElementById("productoPrecio"),
   btnAgregarProducto: document.getElementById("btnAgregarProducto"),
@@ -54,22 +71,44 @@ const el = {
   btnGuardarFactura: document.getElementById("btnGuardarFactura"),
   btnImprimirFactura: document.getElementById("btnImprimirFactura"),
   facturaMessage: document.getElementById("facturaMessage"),
+
   historialSearch: document.getElementById("historialSearch"),
   historialList: document.getElementById("historialList"),
   btnRefreshHistorial: document.getElementById("btnRefreshHistorial"),
+
   clienteNuevoNombre: document.getElementById("clienteNuevoNombre"),
   clienteNuevoRnc: document.getElementById("clienteNuevoRnc"),
   btnGuardarCliente: document.getElementById("btnGuardarCliente"),
   clientesList: document.getElementById("clientesList"),
   clientesMessage: document.getElementById("clientesMessage"),
   btnRefreshClientes: document.getElementById("btnRefreshClientes"),
+
+  btnRefreshProductos: document.getElementById("btnRefreshProductos"),
+  productoNuevoNombre: document.getElementById("productoNuevoNombre"),
+  productoNuevoPrecio: document.getElementById("productoNuevoPrecio"),
+  productoNuevaDescripcion: document.getElementById("productoNuevaDescripcion"),
+  btnGuardarProducto: document.getElementById("btnGuardarProducto"),
+  productosList: document.getElementById("productosList"),
+  productosMessage: document.getElementById("productosMessage"),
+
   empresaInput: document.getElementById("empresaInput"),
   rncInput: document.getElementById("rncInput"),
   logoInput: document.getElementById("logoInput"),
   dropArea: document.getElementById("dropArea"),
   toggleItbis: document.getElementById("toggleItbis"),
   btnGuardarAjustes: document.getElementById("btnGuardarAjustes"),
-  ajustesMessage: document.getElementById("ajustesMessage")
+  ajustesMessage: document.getElementById("ajustesMessage"),
+  btnVolverHistorial: document.getElementById("btnVolverHistorial"),
+  detalleInvoiceNumber: document.getElementById("detalleInvoiceNumber"),
+  detalleInvoiceDate: document.getElementById("detalleInvoiceDate"),
+  detalleClientName: document.getElementById("detalleClientName"),
+  detalleClientRnc: document.getElementById("detalleClientRnc"),
+  detalleBusinessName: document.getElementById("detalleBusinessName"),
+  detalleItemsTable: document.getElementById("detalleItemsTable"),
+  detalleSubtotal: document.getElementById("detalleSubtotal"),
+  detalleTax: document.getElementById("detalleTax"),
+  detalleTotal: document.getElementById("detalleTotal"),
+  btnImprimirDetalle: document.getElementById("btnImprimirDetalle"),
 };
 
 const viewTitles = {
@@ -77,7 +116,9 @@ const viewTitles = {
   factura: "Facturar",
   historial: "Historial",
   clientes: "Clientes",
-  ajustes: "Ajustes"
+  productos: "Productos",
+  ajustes: "Ajustes",
+  "factura-detalle": "Detalle de factura"
 };
 
 function money(value) {
@@ -85,11 +126,13 @@ function money(value) {
 }
 
 function setStatus(target, text, isError = false) {
+  if (!target) return;
   target.textContent = text || "";
   target.style.color = isError ? "#b42318" : "#6b7280";
 }
 
 function setToggle(button, active) {
+  if (!button) return;
   button.classList.toggle("active", !!active);
   button.setAttribute("aria-pressed", active ? "true" : "false");
 }
@@ -108,26 +151,29 @@ function resetInvoiceMeta() {
 
 function showView(viewName) {
   state.currentView = viewName;
+
   document.querySelectorAll(".view").forEach(view => {
     view.classList.toggle("active", view.id === `view-${viewName}`);
   });
+
   el.navItems.forEach(btn => {
     btn.classList.toggle("active", btn.dataset.view === viewName);
   });
+
   el.headerTitle.textContent = viewTitles[viewName] || "Inicio";
 }
 
 function updateHeaderCompany() {
   const company = state.config.empresa || "JeanSkirt";
-  el.headerCompany.textContent = company;
-  el.dashboardCompany.textContent = company;
-  el.empresaNombre.textContent = company;
+  if (el.headerCompany) el.headerCompany.textContent = company;
+  if (el.dashboardCompany) el.dashboardCompany.textContent = company;
+  if (el.empresaNombre) el.empresaNombre.textContent = company;
 }
 
 function updateLogo() {
   const logo = state.config.logo || "";
-  el.logoImg.src = logo;
-  el.logoSettingsPreview.src = logo;
+  if (el.logoImg) el.logoImg.src = logo;
+  if (el.logoSettingsPreview) el.logoSettingsPreview.src = logo;
 }
 
 function updateClientSummary() {
@@ -162,7 +208,9 @@ function renderInvoiceTable() {
       <td class="right">${item.cantidad}</td>
       <td class="right">${money(item.precio)}</td>
       <td class="right">${money(item.total)}</td>
-      <td class="right"><button type="button" class="icon-danger" onclick="removeInvoiceItem(${index})">Quitar</button></td>
+      <td class="right">
+        <button type="button" class="icon-danger" onclick="removeInvoiceItem(${index})">Quitar</button>
+      </td>
     </tr>
   `).join("");
 }
@@ -187,25 +235,40 @@ function recalculateInvoice() {
 
 function clearInvoiceForm() {
   state.invoiceItems = [];
+  state.selectedClientId = null;
+  state.selectedProductId = null;
+
   renderInvoiceTable();
   recalculateInvoice();
   setStatus(el.facturaMessage, "");
   resetInvoiceMeta();
+
   el.clienteNombre.value = "";
+  el.productoNombre.value = "";
+  el.productoCantidad.value = "";
+  el.productoPrecio.value = "";
+
   setToggle(el.toggleCliente, false);
   setToggle(el.toggleEmpresa, false);
+
   el.clienteArea.classList.add("hidden");
   el.rncMostrar.classList.add("hidden");
+  el.clienteSuggestions.classList.add("hidden");
+  el.productoSuggestions.classList.add("hidden");
+
   updateClientSummary();
 }
 
 function applyProfileToUI() {
   updateHeaderCompany();
   updateLogo();
+
   el.empresaInput.value = state.config.empresa || "JeanSkirt";
   el.rncInput.value = state.config.rnc || "";
   el.rncTexto.textContent = state.config.rnc || "";
+
   setToggle(el.toggleItbis, !!state.config.itbis);
+
   updateClientSummary();
   recalculateInvoice();
 }
@@ -225,7 +288,10 @@ async function ensureProfile(user) {
     email: user.email
   };
 
-  const { error: insertError } = await supabaseClient.from("profiles").insert(defaultProfile);
+  const { error: insertError } = await supabaseClient
+    .from("profiles")
+    .insert(defaultProfile);
+
   if (insertError) throw insertError;
   return defaultProfile;
 }
@@ -341,7 +407,9 @@ async function saveSettings() {
     use_default_itbis: state.config.itbis
   };
 
-  const { error } = await supabaseClient.from("business_settings").upsert(payload, { onConflict: "user_id" });
+  const { error } = await supabaseClient
+    .from("business_settings")
+    .upsert(payload, { onConflict: "user_id" });
 
   if (error) {
     setStatus(el.ajustesMessage, error.message, true);
@@ -363,6 +431,7 @@ function addInvoiceItem() {
   }
 
   state.invoiceItems.push({
+    product_id: state.selectedProductId || null,
     nombre,
     cantidad,
     precio,
@@ -376,6 +445,10 @@ function addInvoiceItem() {
   el.productoCantidad.value = "";
   el.productoPrecio.value = "";
   el.productoNombre.focus();
+
+  state.selectedProductId = null;
+  el.productoSuggestions.classList.add("hidden");
+
   setStatus(el.facturaMessage, "");
 }
 
@@ -384,6 +457,8 @@ window.removeInvoiceItem = function(index) {
   renderInvoiceTable();
   recalculateInvoice();
 };
+
+window.openInvoiceDetail = openInvoiceDetail;
 
 async function saveInvoice() {
   if (!state.currentUser) return;
@@ -402,7 +477,7 @@ async function saveInvoice() {
 
   const invoicePayload = {
     user_id: state.currentUser.id,
-    client_id: null,
+    client_id: state.selectedClientId || null,
     client_name: cliente || null,
     client_rnc: esEmpresa ? state.config.rnc || null : null,
     client_email: null,
@@ -428,7 +503,7 @@ async function saveInvoice() {
 
   const itemsPayload = state.invoiceItems.map(item => ({
     invoice_id: invoiceData.id,
-    product_id: null,
+    product_id: item.product_id || null,
     description: item.nombre,
     quantity: item.cantidad,
     unit_price: item.precio,
@@ -436,7 +511,9 @@ async function saveInvoice() {
     line_total: item.total
   }));
 
-  const { error: itemsError } = await supabaseClient.from("invoice_items").insert(itemsPayload);
+  const { error: itemsError } = await supabaseClient
+    .from("invoice_items")
+    .insert(itemsPayload);
 
   if (itemsError) {
     setStatus(el.facturaMessage, itemsError.message, true);
@@ -466,6 +543,64 @@ async function loadInvoices() {
   }
 
   state.invoices = data || [];
+}
+
+async function loadInvoiceItems(invoiceId) {
+  const { data, error } = await supabaseClient
+    .from("invoice_items")
+    .select("*")
+    .eq("invoice_id", invoiceId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error(error);
+    state.selectedInvoiceItems = [];
+    return;
+  }
+
+  state.selectedInvoiceItems = data || [];
+}
+
+function renderInvoiceDetail() {
+  const invoice = state.selectedInvoice;
+  const items = state.selectedInvoiceItems;
+
+  if (!invoice) return;
+
+  el.detalleInvoiceNumber.textContent = invoice.invoice_number || "Sin número";
+  el.detalleInvoiceDate.textContent = invoice.created_at
+    ? new Date(invoice.created_at).toLocaleDateString("es-DO")
+    : "";
+  el.detalleClientName.textContent = invoice.client_name || "Sin cliente";
+  el.detalleClientRnc.textContent = invoice.client_rnc || "Sin RNC";
+  el.detalleBusinessName.textContent = invoice.business_name || state.config.empresa || "";
+
+  if (!items.length) {
+    el.detalleItemsTable.innerHTML = '<tr><td colspan="4" class="empty-cell">No hay items.</td></tr>';
+  } else {
+    el.detalleItemsTable.innerHTML = items.map(item => `
+      <tr>
+        <td>${item.description || ""}</td>
+        <td class="right">${item.quantity || 0}</td>
+        <td class="right">${money(item.unit_price || 0)}</td>
+        <td class="right">${money(item.line_total || 0)}</td>
+      </tr>
+    `).join("");
+  }
+
+  el.detalleSubtotal.textContent = money(invoice.subtotal || 0);
+  el.detalleTax.textContent = money(invoice.tax_total || 0);
+  el.detalleTotal.textContent = money(invoice.total || 0);
+}
+
+async function openInvoiceDetail(invoiceId) {
+  const invoice = state.invoices.find(i => String(i.id) === String(invoiceId));
+  if (!invoice) return;
+
+  state.selectedInvoice = invoice;
+  await loadInvoiceItems(invoice.id);
+  renderInvoiceDetail();
+  showView("factura-detalle");
 }
 
 function renderDashboard() {
@@ -515,14 +650,14 @@ function renderHistorial() {
 
   el.historialList.classList.remove("empty-state");
   el.historialList.innerHTML = filtered.map(invoice => `
-    <div class="list-item">
-      <div class="list-title">${invoice.invoice_number || "Sin número"} - ${money(invoice.total)}</div>
-      <div class="list-meta">
-        ${invoice.client_name || "Sin cliente"} • ${new Date(invoice.created_at).toLocaleDateString("es-DO")}
-        ${invoice.client_rnc ? ` • RNC ${invoice.client_rnc}` : ""}
-      </div>
+  <div class="list-item" style="cursor:pointer" onclick="openInvoiceDetail('${invoice.id}')">
+    <div class="list-title">${invoice.invoice_number || "Sin número"} - ${money(invoice.total)}</div>
+    <div class="list-meta">
+      ${invoice.client_name || "Sin cliente"} • ${new Date(invoice.created_at).toLocaleDateString("es-DO")}
+      ${invoice.client_rnc ? ` • RNC ${invoice.client_rnc}` : ""}
     </div>
-  `).join("");
+  </div>
+`).join("");
 }
 
 async function saveClient() {
@@ -536,11 +671,13 @@ async function saveClient() {
     return;
   }
 
-  const { error } = await supabaseClient.from("clients").insert({
-    user_id: state.currentUser.id,
-    name: nombre,
-    rnc: rnc || null
-  });
+  const { error } = await supabaseClient
+    .from("clients")
+    .insert({
+      user_id: state.currentUser.id,
+      name: nombre,
+      rnc: rnc || null
+    });
 
   if (error) {
     setStatus(el.clientesMessage, error.message, true);
@@ -550,6 +687,7 @@ async function saveClient() {
   setStatus(el.clientesMessage, "Cliente guardado.");
   el.clienteNuevoNombre.value = "";
   el.clienteNuevoRnc.value = "";
+
   await loadClients();
   renderClients();
 }
@@ -586,6 +724,185 @@ function renderClients() {
       <div class="list-meta">${client.rnc || "Sin RNC"}</div>
     </div>
   `).join("");
+}
+
+async function saveProduct() {
+  if (!state.currentUser) return;
+
+  const name = el.productoNuevoNombre.value.trim();
+  const price = parseFloat(el.productoNuevoPrecio.value);
+  const description = el.productoNuevaDescripcion.value.trim();
+
+  if (!name || isNaN(price) || price < 0) {
+    setStatus(el.productosMessage, "Escribe nombre y precio válidos.", true);
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from("products")
+    .insert({
+      user_id: state.currentUser.id,
+      name,
+      description: description || null,
+      price,
+      tax_id: null,
+      is_active: true
+    });
+
+  if (error) {
+    setStatus(el.productosMessage, error.message, true);
+    return;
+  }
+
+  setStatus(el.productosMessage, "Producto guardado.");
+  el.productoNuevoNombre.value = "";
+  el.productoNuevoPrecio.value = "";
+  el.productoNuevaDescripcion.value = "";
+
+  await loadProducts();
+  renderProducts();
+}
+
+async function loadProducts() {
+  if (!state.currentUser) return;
+
+  const { data, error } = await supabaseClient
+    .from("products")
+    .select("*")
+    .eq("user_id", state.currentUser.id)
+    .eq("is_active", true)
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error(error);
+    state.products = [];
+    return;
+  }
+
+  state.products = data || [];
+}
+
+function renderProducts() {
+  if (!state.products.length) {
+    el.productosList.innerHTML = "No hay productos guardados.";
+    el.productosList.classList.add("empty-state");
+    return;
+  }
+
+  el.productosList.classList.remove("empty-state");
+  el.productosList.innerHTML = state.products.map(product => `
+    <div class="list-item">
+      <div class="list-title">${product.name}</div>
+      <div class="list-meta">
+        ${money(product.price)}
+        ${product.description ? ` • ${product.description}` : ""}
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderProductSuggestions(filter = "") {
+  if (!el.productoSuggestions) return;
+
+  const q = filter.trim().toLowerCase();
+
+  const filtered = state.products.filter(product =>
+    !q ||
+    String(product.name || "").toLowerCase().includes(q) ||
+    String(product.description || "").toLowerCase().includes(q)
+  );
+
+  if (!filtered.length) {
+    el.productoSuggestions.innerHTML = "";
+    el.productoSuggestions.classList.add("hidden");
+    return;
+  }
+
+  el.productoSuggestions.innerHTML = filtered.map(product => `
+    <div class="autocomplete-item" data-product-id="${product.id}">
+      <div class="autocomplete-title">${product.name}</div>
+      <div class="autocomplete-meta">
+        ${money(product.price)}
+        ${product.description ? ` • ${product.description}` : ""}
+      </div>
+    </div>
+  `).join("");
+
+  el.productoSuggestions.classList.remove("hidden");
+
+  el.productoSuggestions.querySelectorAll(".autocomplete-item").forEach(item => {
+    item.addEventListener("click", () => {
+      const productId = item.dataset.productId;
+      const product = state.products.find(p => String(p.id) === String(productId));
+      if (!product) return;
+
+      state.selectedProductId = product.id;
+      el.productoNombre.value = product.name || "";
+      el.productoPrecio.value = product.price ?? "";
+
+      if (!el.productoCantidad.value) {
+        el.productoCantidad.value = 1;
+      }
+
+      el.productoSuggestions.classList.add("hidden");
+    });
+  });
+}
+
+function renderClientSuggestions(filter = "") {
+  if (!el.clienteSuggestions) return;
+
+  const q = filter.trim().toLowerCase();
+
+  const filtered = state.clients.filter(client =>
+    !q ||
+    String(client.name || "").toLowerCase().includes(q) ||
+    String(client.rnc || "").toLowerCase().includes(q) ||
+    String(client.email || "").toLowerCase().includes(q)
+  );
+
+  if (!filtered.length) {
+    el.clienteSuggestions.innerHTML = "";
+    el.clienteSuggestions.classList.add("hidden");
+    return;
+  }
+
+  el.clienteSuggestions.innerHTML = filtered.map(client => `
+    <div class="autocomplete-item" data-client-id="${client.id}">
+      <div class="autocomplete-title">${client.name}</div>
+      <div class="autocomplete-meta">
+        ${client.rnc || "Sin RNC"}
+        ${client.email ? ` • ${client.email}` : ""}
+      </div>
+    </div>
+  `).join("");
+
+  el.clienteSuggestions.classList.remove("hidden");
+
+  el.clienteSuggestions.querySelectorAll(".autocomplete-item").forEach(item => {
+    item.addEventListener("click", () => {
+      const clientId = item.dataset.clientId;
+      const client = state.clients.find(c => String(c.id) === String(clientId));
+      if (!client) return;
+
+      state.selectedClientId = client.id;
+      el.clienteNombre.value = client.name || "";
+
+      setToggle(el.toggleCliente, true);
+      el.clienteArea.classList.remove("hidden");
+
+      if (client.rnc) {
+        setToggle(el.toggleEmpresa, true);
+        el.rncMostrar.classList.remove("hidden");
+      } else {
+        setToggle(el.toggleEmpresa, false);
+        el.rncMostrar.classList.add("hidden");
+      }
+
+      el.clienteSuggestions.classList.add("hidden");
+      updateClientSummary();
+    });
+  });
 }
 
 function bindLogoUpload() {
@@ -625,6 +942,7 @@ function bindEvents() {
   el.navItems.forEach(btn => btn.addEventListener("click", () => showView(btn.dataset.view)));
 
   el.btnGoFactura.addEventListener("click", () => showView("factura"));
+
   el.btnRefreshDashboard.addEventListener("click", async () => {
     await loadInvoices();
     renderDashboard();
@@ -637,6 +955,7 @@ function bindEvents() {
     if (!active) {
       setToggle(el.toggleEmpresa, false);
       el.rncMostrar.classList.add("hidden");
+      state.selectedClientId = null;
     }
 
     updateClientSummary();
@@ -649,7 +968,31 @@ function bindEvents() {
     updateClientSummary();
   });
 
-  el.clienteNombre.addEventListener("input", updateClientSummary);
+  el.clienteNombre.addEventListener("input", () => {
+    state.selectedClientId = null;
+    renderClientSuggestions(el.clienteNombre.value);
+    updateClientSummary();
+  });
+
+  el.clienteNombre.addEventListener("focus", () => {
+    renderClientSuggestions(el.clienteNombre.value);
+  });
+
+  el.productoNombre.addEventListener("input", () => {
+    state.selectedProductId = null;
+    renderProductSuggestions(el.productoNombre.value);
+  });
+
+  el.productoNombre.addEventListener("focus", () => {
+    renderProductSuggestions(el.productoNombre.value);
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest(".autocomplete-wrap")) {
+      el.productoSuggestions.classList.add("hidden");
+      el.clienteSuggestions.classList.add("hidden");
+    }
+  });
 
   el.toggleItbis.addEventListener("click", () => {
     const active = toggleButton(el.toggleItbis);
@@ -662,18 +1005,39 @@ function bindEvents() {
   el.btnImprimirFactura.addEventListener("click", () => window.print());
 
   el.historialSearch.addEventListener("input", renderHistorial);
+
   el.btnRefreshHistorial.addEventListener("click", async () => {
     await loadInvoices();
     renderHistorial();
   });
 
   el.btnGuardarCliente.addEventListener("click", saveClient);
+
   el.btnRefreshClientes.addEventListener("click", async () => {
     await loadClients();
     renderClients();
   });
 
+  if (el.btnGuardarProducto) {
+    el.btnGuardarProducto.addEventListener("click", saveProduct);
+  }
+
+  if (el.btnRefreshProductos) {
+    el.btnRefreshProductos.addEventListener("click", async () => {
+      await loadProducts();
+      renderProducts();
+    });
+  }
+
   el.btnGuardarAjustes.addEventListener("click", saveSettings);
+
+  if (el.btnVolverHistorial) {
+    el.btnVolverHistorial.addEventListener("click", () => showView("historial"));
+  }
+
+  if (el.btnImprimirDetalle) {
+    el.btnImprimirDetalle.addEventListener("click", () => window.print());
+  }
 
   bindLogoUpload();
 }
@@ -690,11 +1054,16 @@ async function initApp() {
   el.loginView.classList.add("hidden");
   el.appShell.classList.remove("hidden");
 
-  await Promise.all([loadInvoices(), loadClients()]);
+  await Promise.all([
+    loadInvoices(),
+    loadClients(),
+    loadProducts()
+  ]);
 
   renderDashboard();
   renderHistorial();
   renderClients();
+  renderProducts();
   clearInvoiceForm();
   showView(state.currentView);
 }
