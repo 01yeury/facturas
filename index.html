@@ -26,13 +26,18 @@
 
   <div id="appShell" class="app-shell hidden">
     <header class="topbar">
-      <div>
-        <div id="headerCompany" class="topbar-company">JeanSkirt</div>
-        <div id="headerTitle" class="topbar-title">Inicio</div>
+      <div class="topbar-left">
+        <button id="btnOpenMoreMenu" class="menu-btn" type="button">☰</button>
+  
+        <div>
+          <div id="headerCompany" class="topbar-company">JeanSkirt</div>
+          <div id="headerTitle" class="topbar-title">Inicio</div>
+        </div>
       </div>
+  
       <button id="btnLogout" class="ghost-btn">Salir</button>
     </header>
-
+  
     <main class="main-content">
       <section id="view-dashboard" class="view active">
         <div class="hero-card">
@@ -106,6 +111,8 @@
               <strong>RNC:</strong> <span id="rncTexto"></span>
             </div>
           </div>
+
+          <input id="clienteRncManual" class="hidden" placeholder="RNC del cliente">
 
           <div id="clienteResumen" class="summary-box hidden"></div>
 
@@ -320,10 +327,66 @@
       <button class="nav-item" data-view="clientes" type="button">Clientes</button>
       <button class="nav-item" data-view="productos" type="button">Productos</button>
       <button class="nav-item" data-view="ajustes" type="button">Ajustes</button>
+      <button class="nav-item" data-view="mas" type="button" id="btnBottomMore">Más</button>
     </nav>
   </div>
 
+  <div id="clientEditModal" class="modal hidden">
+    <div class="modal-card">
+      <h3>Editar cliente</h3>
+  
+      <input id="editClientName" placeholder="Nombre" />
+      <input id="editClientRnc" placeholder="RNC" />
+      <input id="editClientEmail" placeholder="Email" />
+      <input id="editClientPhone" placeholder="Teléfono" />
+      <input id="editClientAddress" placeholder="Dirección" />
+      <input id="editClientNotes" placeholder="Notas" />
+  
+      <div class="modal-actions">
+        <button id="btnSaveClientEdit" class="primary" type="button">Guardar</button>
+        <button id="btnCloseClientEdit" class="ghost-btn" type="button">Cerrar</button>
+      </div>
+    </div>
+  </div>
+  
+  <div id="productEditModal" class="modal hidden">
+    <div class="modal-card">
+      <h3>Editar producto</h3>
+  
+      <input id="editProductName" placeholder="Nombre" />
+      <input id="editProductDescription" placeholder="Descripción" />
+      <input id="editProductPrice" type="number" min="0" step="0.01" placeholder="Precio" />
+  
+      <div class="toggle-row">
+        <span>Activo</span>
+        <button id="toggleEditProductActive" class="toggle-switch" type="button" aria-pressed="true"></button>
+      </div>
+  
+      <div class="modal-actions">
+        <button id="btnSaveProductEdit" class="primary" type="button">Guardar</button>
+        <button id="btnCloseProductEdit" class="ghost-btn" type="button">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="moreDrawer" class="more-drawer hidden">
+    <div class="more-drawer-card">
+      <h3 class="more-drawer-title">Más opciones</h3>
+  
+      <div class="more-drawer-list">
+        <button class="more-drawer-item" type="button" data-more-view="clientes">Clientes</button>
+        <button class="more-drawer-item" type="button" data-more-view="productos">Productos</button>
+        <button class="more-drawer-item" type="button" data-more-view="ajustes">Ajustes</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="printContainer" class="print-container hidden"></div>
+  
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js"></script>
+
+  
+
 </body>
 </html>
