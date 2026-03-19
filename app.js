@@ -18,7 +18,9 @@ const state = {
   selectedProductId: null,
   selectedClientId: null,
   selectedInvoice: null,
-  selectedInvoiceItems: []
+  selectedInvoiceItems: [],
+  editingClientId: null,
+  editingProductId: null
 };
 
 const el = {
@@ -109,6 +111,27 @@ const el = {
   detalleTax: document.getElementById("detalleTax"),
   detalleTotal: document.getElementById("detalleTotal"),
   btnImprimirDetalle: document.getElementById("btnImprimirDetalle"),
+  clientEditModal: document.getElementById("clientEditModal"),
+  editClientName: document.getElementById("editClientName"),
+  editClientRnc: document.getElementById("editClientRnc"),
+  editClientEmail: document.getElementById("editClientEmail"),
+  editClientPhone: document.getElementById("editClientPhone"),
+  editClientAddress: document.getElementById("editClientAddress"),
+  editClientNotes: document.getElementById("editClientNotes"),
+  btnSaveClientEdit: document.getElementById("btnSaveClientEdit"),
+  btnCloseClientEdit: document.getElementById("btnCloseClientEdit"),
+  productEditModal: document.getElementById("productEditModal"),
+  editProductName: document.getElementById("editProductName"),
+  editProductDescription: document.getElementById("editProductDescription"),
+  editProductPrice: document.getElementById("editProductPrice"),
+  toggleEditProductActive: document.getElementById("toggleEditProductActive"),
+  btnSaveProductEdit: document.getElementById("btnSaveProductEdit"),
+  btnCloseProductEdit: document.getElementById("btnCloseProductEdit"),
+  btnOpenMoreMenu: document.getElementById("btnOpenMoreMenu"),
+  btnBottomMore: document.getElementById("btnBottomMore"),
+  moreDrawer: document.getElementById("moreDrawer"),
+  moreDrawerItems: document.querySelectorAll("[data-more-view]"),
+  clienteRncManual: document.getElementById("clienteRncManual"),
 };
 
 const viewTitles = {
@@ -161,6 +184,7 @@ function showView(viewName) {
   });
 
   el.headerTitle.textContent = viewTitles[viewName] || "Inicio";
+  closeMoreDrawer();
 }
 
 function updateHeaderCompany() {
@@ -187,13 +211,36 @@ function updateClientSummary() {
     return;
   }
 
+  const clientRnc = getCurrentClientRnc();
+
   if (empresaActiva) {
-    el.clienteResumen.innerHTML = `<strong>Cliente:</strong> ${nombre}<br><strong>RNC:</strong> ${state.config.rnc || ""}`;
+    el.clienteResumen.innerHTML = `<strong>Cliente:</strong> ${nombre}<br><strong>RNC:</strong> ${clientRnc || ""}`;
   } else {
     el.clienteResumen.innerHTML = `<strong>Cliente:</strong> ${nombre}`;
   }
 
   el.clienteResumen.classList.remove("hidden");
+}
+
+function getCurrentClientRnc() {
+  if (!el.toggleEmpresa.classList.contains("active")) return "";
+
+  const selectedClient = state.clients.find(c => String(c.id) === String(state.selectedClientId));
+  if (selectedClient && selectedClient.rnc) {
+    return selectedClient.rnc;
+  }
+
+  return el.clienteRncManual.value.trim();
+}
+
+function openMoreDrawer() {
+  if (!el.moreDrawer) return;
+  el.moreDrawer.classList.remove("hidden");
+}
+
+function closeMoreDrawer() {
+  if (!el.moreDrawer) return;
+  el.moreDrawer.classList.add("hidden");
 }
 
 function renderInvoiceTable() {
@@ -255,6 +302,10 @@ function clearInvoiceForm() {
   el.rncMostrar.classList.add("hidden");
   el.clienteSuggestions.classList.add("hidden");
   el.productoSuggestions.classList.add("hidden");
+
+  el.clienteRncManual.value = "";
+  el.clienteRncManual.classList.add("hidden");
+  el.rncTexto.textContent = "";
 
   updateClientSummary();
 }
@@ -458,6 +509,9 @@ window.removeInvoiceItem = function(index) {
   recalculateInvoice();
 };
 
+
+window.openClientEdit = openClientEdit;
+window.openProductEdit = openProductEdit;
 window.openInvoiceDetail = openInvoiceDetail;
 
 async function saveInvoice() {
@@ -479,7 +533,7 @@ async function saveInvoice() {
     user_id: state.currentUser.id,
     client_id: state.selectedClientId || null,
     client_name: cliente || null,
-    client_rnc: esEmpresa ? state.config.rnc || null : null,
+    client_rnc: esEmpresa ? (getCurrentClientRnc() || null) : null,
     client_email: null,
     business_name: state.config.empresa || null,
     business_rnc: state.config.rnc || null,
@@ -719,7 +773,7 @@ function renderClients() {
 
   el.clientesList.classList.remove("empty-state");
   el.clientesList.innerHTML = state.clients.map(client => `
-    <div class="list-item">
+  <div class="list-item" style="cursor:pointer" onclick="openClientEdit('${client.id}')">
       <div class="list-title">${client.name}</div>
       <div class="list-meta">${client.rnc || "Sin RNC"}</div>
     </div>
@@ -791,7 +845,7 @@ function renderProducts() {
 
   el.productosList.classList.remove("empty-state");
   el.productosList.innerHTML = state.products.map(product => `
-    <div class="list-item">
+    <div class="list-item" style="cursor:pointer" onclick="openProductEdit('${product.id}')">
       <div class="list-title">${product.name}</div>
       <div class="list-meta">
         ${money(product.price)}
@@ -799,6 +853,177 @@ function renderProducts() {
       </div>
     </div>
   `).join("");
+}
+
+function buildPrintHTML({ invoice, items }) {
+  const clienteHTML = invoice.client_name
+    ? `<div class="print-meta"><strong>Cliente:</strong> ${invoice.client_name}</div>`
+    : "";
+
+  const clienteRncHTML = invoice.client_rnc
+    ? `<div class="print-meta"><strong>RNC:</strong> ${invoice.client_rnc}</div>`
+    : "";
+
+  return `
+    <div class="print-sheet">
+      <div class="print-header">
+        ${state.config.logo ? `<img src="${state.config.logo}" alt="Logo" class="print-logo">` : ""}
+        <div class="print-business">${invoice.business_name || state.config.empresa || "Empresa"}</div>
+        <div class="print-meta"><strong>Factura No.:</strong> ${invoice.invoice_number || ""}</div>
+        <div class="print-meta"><strong>RNC:</strong> ${invoice.business_rnc || state.config.rnc || ""}</div>
+      </div>
+
+      <div class="print-client">
+        ${clienteHTML}
+        ${clienteRncHTML}
+      </div>
+
+      <table class="print-table">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th class="right">Cant.</th>
+            <th class="right">P. Unit</th>
+            <th class="right">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${items.map(item => `
+            <tr>
+              <td>${item.description || item.nombre || ""}</td>
+              <td class="right">${item.quantity ?? item.cantidad ?? 0}</td>
+              <td class="right">${money(item.unit_price ?? item.precio ?? 0)}</td>
+              <td class="right">${money(item.line_total ?? item.total ?? 0)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+
+      <div class="print-totals">
+        <div class="print-total-row">
+          <span>Subtotal</span>
+          <strong>${money(invoice.subtotal || 0)}</strong>
+        </div>
+        <div class="print-total-row">
+          <span>ITBIS</span>
+          <strong>${money(invoice.tax_total || 0)}</strong>
+        </div>
+        <div class="print-total-row print-total-final">
+          <span>Total</span>
+          <strong>${money(invoice.total || 0)}</strong>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function printInvoiceData(invoice, items) {
+  const printContainer = document.getElementById("printContainer");
+  if (!printContainer) return;
+
+  printContainer.innerHTML = buildPrintHTML({ invoice, items });
+  printContainer.classList.remove("hidden");
+
+  window.print();
+
+  setTimeout(() => {
+    printContainer.innerHTML = "";
+    printContainer.classList.add("hidden");
+  }, 300);
+}
+
+function openClientEdit(clientId) {
+  const client = state.clients.find(c => String(c.id) === String(clientId));
+  if (!client) return;
+
+  state.editingClientId = client.id;
+  el.editClientName.value = client.name || "";
+  el.editClientRnc.value = client.rnc || "";
+  el.editClientEmail.value = client.email || "";
+  el.editClientPhone.value = client.phone || "";
+  el.editClientAddress.value = client.address || "";
+  el.editClientNotes.value = client.notes || "";
+
+  el.clientEditModal.classList.remove("hidden");
+}
+
+function closeClientEdit() {
+  state.editingClientId = null;
+  el.clientEditModal.classList.add("hidden");
+}
+
+async function saveClientEdit() {
+  if (!state.editingClientId) return;
+
+  const payload = {
+    name: el.editClientName.value.trim(),
+    rnc: el.editClientRnc.value.trim() || null,
+    email: el.editClientEmail.value.trim() || null,
+    phone: el.editClientPhone.value.trim() || null,
+    address: el.editClientAddress.value.trim() || null,
+    notes: el.editClientNotes.value.trim() || null
+  };
+
+  const { error } = await supabaseClient
+    .from("clients")
+    .update(payload)
+    .eq("id", state.editingClientId)
+    .eq("user_id", state.currentUser.id);
+
+  if (error) {
+    setStatus(el.clientesMessage, error.message, true);
+    return;
+  }
+
+  closeClientEdit();
+  await loadClients();
+  renderClients();
+  setStatus(el.clientesMessage, "Cliente actualizado.");
+}
+
+function openProductEdit(productId) {
+  const product = state.products.find(p => String(p.id) === String(productId));
+  if (!product) return;
+
+  state.editingProductId = product.id;
+  el.editProductName.value = product.name || "";
+  el.editProductDescription.value = product.description || "";
+  el.editProductPrice.value = product.price ?? "";
+  setToggle(el.toggleEditProductActive, product.is_active !== false);
+
+  el.productEditModal.classList.remove("hidden");
+}
+
+function closeProductEdit() {
+  state.editingProductId = null;
+  el.productEditModal.classList.add("hidden");
+}
+
+async function saveProductEdit() {
+  if (!state.editingProductId) return;
+
+  const payload = {
+    name: el.editProductName.value.trim(),
+    description: el.editProductDescription.value.trim() || null,
+    price: parseFloat(el.editProductPrice.value) || 0,
+    is_active: el.toggleEditProductActive.classList.contains("active")
+  };
+
+  const { error } = await supabaseClient
+    .from("products")
+    .update(payload)
+    .eq("id", state.editingProductId)
+    .eq("user_id", state.currentUser.id);
+
+  if (error) {
+    setStatus(el.productosMessage, error.message, true);
+    return;
+  }
+
+  closeProductEdit();
+  await loadProducts();
+  renderProducts();
+  setStatus(el.productosMessage, "Producto actualizado.");
 }
 
 function renderProductSuggestions(filter = "") {
@@ -894,9 +1119,15 @@ function renderClientSuggestions(filter = "") {
       if (client.rnc) {
         setToggle(el.toggleEmpresa, true);
         el.rncMostrar.classList.remove("hidden");
+        el.rncTexto.textContent = client.rnc;
+        el.clienteRncManual.classList.add("hidden");
+        el.clienteRncManual.value = "";
       } else {
         setToggle(el.toggleEmpresa, false);
         el.rncMostrar.classList.add("hidden");
+        el.rncTexto.textContent = "";
+        el.clienteRncManual.classList.add("hidden");
+        el.clienteRncManual.value = "";
       }
 
       el.clienteSuggestions.classList.add("hidden");
@@ -961,12 +1192,56 @@ function bindEvents() {
     updateClientSummary();
   });
 
+  if (el.btnCloseClientEdit) {
+    el.btnCloseClientEdit.addEventListener("click", closeClientEdit);
+  }
+
+  if (el.btnSaveClientEdit) {
+    el.btnSaveClientEdit.addEventListener("click", saveClientEdit);
+  }
+
+  if (el.btnCloseProductEdit) {
+    el.btnCloseProductEdit.addEventListener("click", closeProductEdit);
+  }
+
+  if (el.btnSaveProductEdit) {
+    el.btnSaveProductEdit.addEventListener("click", saveProductEdit);
+  }
+
+  if (el.toggleEditProductActive) {
+    el.toggleEditProductActive.addEventListener("click", () => {
+      toggleButton(el.toggleEditProductActive);
+    });
+  }
+
   el.toggleEmpresa.addEventListener("click", () => {
     if (!el.toggleCliente.classList.contains("active")) return;
+
     const active = toggleButton(el.toggleEmpresa);
-    el.rncMostrar.classList.toggle("hidden", !active);
+    const selectedClient = state.clients.find(c => String(c.id) === String(state.selectedClientId));
+
+    if (active) {
+      el.rncMostrar.classList.remove("hidden");
+
+      if (selectedClient && selectedClient.rnc) {
+        el.rncTexto.textContent = selectedClient.rnc;
+        el.clienteRncManual.classList.add("hidden");
+        el.clienteRncManual.value = "";
+      } else {
+        el.rncTexto.textContent = "";
+        el.clienteRncManual.classList.remove("hidden");
+      }
+    } else {
+      el.rncMostrar.classList.add("hidden");
+      el.rncTexto.textContent = "";
+      el.clienteRncManual.classList.add("hidden");
+      el.clienteRncManual.value = "";
+    }
+
     updateClientSummary();
   });
+  
+  el.clienteRncManual.addEventListener("input", updateClientSummary);
 
   el.clienteNombre.addEventListener("input", () => {
     state.selectedClientId = null;
@@ -1002,8 +1277,32 @@ function bindEvents() {
 
   el.btnAgregarProducto.addEventListener("click", addInvoiceItem);
   el.btnGuardarFactura.addEventListener("click", saveInvoice);
-  el.btnImprimirFactura.addEventListener("click", () => window.print());
 
+  el.btnImprimirFactura.addEventListener("click", () => {
+    const total = state.invoiceItems.reduce((acc, item) => acc + item.total, 0);
+    const subtotal = state.config.itbis ? +(total / 1.18).toFixed(2) : +total.toFixed(2);
+    const taxTotal = state.config.itbis ? +(total - subtotal).toFixed(2) : 0;
+  
+    const invoice = {
+      invoice_number: el.numeroFactura.textContent,
+      business_name: state.config.empresa,
+      business_rnc: state.config.rnc,
+      client_name: el.toggleCliente.classList.contains("active") ? el.clienteNombre.value.trim() : "",
+      client_rnc: el.toggleEmpresa.classList.contains("active") ? getCurrentClientRnc() : "",
+      subtotal,
+      tax_total: taxTotal,
+      total
+    };
+  
+    const items = state.invoiceItems.map(item => ({
+      description: item.nombre,
+      quantity: item.cantidad,
+      unit_price: item.precio,
+      line_total: item.total
+    }));
+  
+    printInvoiceData(invoice, items);
+  });
   el.historialSearch.addEventListener("input", renderHistorial);
 
   el.btnRefreshHistorial.addEventListener("click", async () => {
@@ -1036,7 +1335,36 @@ function bindEvents() {
   }
 
   if (el.btnImprimirDetalle) {
-    el.btnImprimirDetalle.addEventListener("click", () => window.print());
+    el.btnImprimirDetalle.addEventListener("click", () => {
+      if (!state.selectedInvoice) return;
+      printInvoiceData(state.selectedInvoice, state.selectedInvoiceItems || []);
+    });
+  }
+
+  if (el.btnOpenMoreMenu) {
+    el.btnOpenMoreMenu.addEventListener("click", openMoreDrawer);
+  }
+
+  if (el.btnBottomMore) {
+    el.btnBottomMore.addEventListener("click", openMoreDrawer);
+  }
+
+  if (el.moreDrawer) {
+    el.moreDrawer.addEventListener("click", (e) => {
+      if (e.target === el.moreDrawer) {
+        closeMoreDrawer();
+      }
+    });
+  }
+
+  if (el.moreDrawerItems) {
+    el.moreDrawerItems.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const view = btn.dataset.moreView;
+        closeMoreDrawer();
+        showView(view);
+      });
+    });
   }
 
   bindLogoUpload();
