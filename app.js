@@ -39,7 +39,7 @@ const state = {
   lastSessionUserId: null,
   monthlyInvoiceLimit: 10,
   monthlyInvoiceUsed: 0,
-  isPremium: false,
+  isPremium: false
 };
 
 const el = {
@@ -202,26 +202,6 @@ const themeMap = {
   }
 };
 
-function applyTheme(themeName = "pink") {
-  const theme = themeMap[themeName] || themeMap.pink;
-
-  document.documentElement.style.setProperty("--primary", theme.primary);
-  document.documentElement.style.setProperty("--primary-dark", theme.primaryDark);
-  document.documentElement.style.setProperty("--primary-soft", theme.primarySoft);
-  document.documentElement.style.setProperty("--focus-ring", theme.focusRing);
-
-  state.config.theme = themeMap[themeName] ? themeName : "pink";
-  updateThemePickerUI();
-}
-
-function updateThemePickerUI() {
-  if (!el.themeSwatches) return;
-
-  el.themeSwatches.forEach(btn => {
-    btn.classList.toggle("active", btn.dataset.theme === state.config.theme);
-  });
-}
-
 function money(value) {
   return new Intl.NumberFormat("es-DO", {
     style: "currency",
@@ -248,6 +228,26 @@ function toggleButton(button) {
   const active = !button.classList.contains("active");
   setToggle(button, active);
   return active;
+}
+
+function applyTheme(themeName = "pink") {
+  const theme = themeMap[themeName] || themeMap.pink;
+
+  document.documentElement.style.setProperty("--primary", theme.primary);
+  document.documentElement.style.setProperty("--primary-dark", theme.primaryDark);
+  document.documentElement.style.setProperty("--primary-soft", theme.primarySoft);
+  document.documentElement.style.setProperty("--focus-ring", theme.focusRing);
+
+  state.config.theme = themeMap[themeName] ? themeName : "pink";
+  updateThemePickerUI();
+}
+
+function updateThemePickerUI() {
+  if (!el.themeSwatches) return;
+
+  el.themeSwatches.forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.theme === state.config.theme);
+  });
 }
 
 function showLoginView(message = "") {
@@ -297,7 +297,6 @@ function updateHeaderCompany() {
     el.detalleBusinessName.textContent = company;
   }
 }
-
 function updateLogo() {
   const logo = state.config.logo || "";
   if (el.logoImg) el.logoImg.src = logo;
@@ -316,18 +315,6 @@ function getCurrentClientRnc() {
   }
 
   return el.clienteRncManual ? el.clienteRncManual.value.trim() : "";
-}
-
-function updateInvoiceActionButtons() {
-  const hasItems = state.invoiceItems.length > 0;
-
-  if (el.btnGuardarFactura) {
-    el.btnGuardarFactura.disabled = !hasItems;
-  }
-
-  if (el.btnImprimirFactura) {
-    el.btnImprimirFactura.disabled = !hasItems;
-  }
 }
 
 function updateClientSummary() {
@@ -352,6 +339,16 @@ function updateClientSummary() {
   }
 
   el.clienteResumen.classList.remove("hidden");
+}
+
+function openMoreDrawer() {
+  if (!el.moreDrawer) return;
+  el.moreDrawer.classList.remove("hidden");
+}
+
+function closeMoreDrawer() {
+  if (!el.moreDrawer) return;
+  el.moreDrawer.classList.add("hidden");
 }
 
 function getCurrentMonthRange() {
@@ -424,6 +421,19 @@ function updateUsageBanner() {
   }
 }
 
+function updateInvoiceActionButtons() {
+  const hasItems = state.invoiceItems.length > 0;
+  const blocked = hasReachedMonthlyLimit();
+
+  if (el.btnGuardarFactura) {
+    el.btnGuardarFactura.disabled = blocked || !hasItems;
+  }
+
+  if (el.btnImprimirFactura) {
+    el.btnImprimirFactura.disabled = blocked || !hasItems;
+  }
+}
+
 function updateFacturaAvailability() {
   const blocked = hasReachedMonthlyLimit();
 
@@ -452,7 +462,11 @@ function updateFacturaAvailability() {
     if (node.classList.contains("toggle-switch")) {
       node.style.pointerEvents = blocked ? "none" : "";
       node.style.opacity = blocked ? "0.6" : "";
-    } else {
+    } else if (
+      node !== el.btnGuardarFactura &&
+      node !== el.btnImprimirFactura &&
+      node !== el.btnAgregarProducto
+    ) {
       node.disabled = blocked;
     }
   });
@@ -461,29 +475,6 @@ function updateFacturaAvailability() {
   el.clienteSuggestions?.classList.add("hidden");
 
   updateInvoiceActionButtons();
-}
-
-function updateInvoiceActionButtons() {
-  const hasItems = state.invoiceItems.length > 0;
-  const blocked = hasReachedMonthlyLimit();
-
-  if (el.btnGuardarFactura) {
-    el.btnGuardarFactura.disabled = blocked || !hasItems;
-  }
-
-  if (el.btnImprimirFactura) {
-    el.btnImprimirFactura.disabled = blocked || !hasItems;
-  }
-}
-
-function openMoreDrawer() {
-  if (!el.moreDrawer) return;
-  el.moreDrawer.classList.remove("hidden");
-}
-
-function closeMoreDrawer() {
-  if (!el.moreDrawer) return;
-  el.moreDrawer.classList.add("hidden");
 }
 
 function renderInvoiceTable() {
@@ -570,7 +561,6 @@ function clearInvoiceForm() {
   updateClientSummary();
   updateInvoiceActionButtons();
 }
-
 function applyProfileToUI() {
   updateHeaderCompany();
   updateLogo();
@@ -580,7 +570,6 @@ function applyProfileToUI() {
   if (el.rncTexto) el.rncTexto.textContent = state.config.rnc || "";
 
   setToggle(el.toggleItbis, !!state.config.itbis);
-
   applyTheme(state.config.theme || "pink");
 
   updateClientSummary();
@@ -629,6 +618,7 @@ async function ensureBusinessSettings(user) {
     address: "",
     default_currency: "DOP",
     use_default_itbis: true,
+    theme: "pink",
     is_premium: false
   };
 
@@ -659,6 +649,7 @@ async function loadProfileFromSession(session) {
   };
 
   state.isPremium = !!business.is_premium;
+
   applyProfileToUI();
   return true;
 }
@@ -709,42 +700,6 @@ async function logoutUser() {
   showLoginView("Sesión cerrada.");
 }
 
-function addInvoiceItem() {
-  const nombre = el.productoNombre.value.trim();
-  const cantidad = parseFloat(el.productoCantidad.value);
-  const precio = parseFloat(el.productoPrecio.value);
-
-  if (!nombre || isNaN(cantidad) || isNaN(precio) || cantidad <= 0 || precio < 0) {
-    setStatus(el.facturaMessage, "Completa producto, cantidad y precio correctamente.", true);
-    return;
-  }
-
-  state.invoiceItems.push({
-    product_id: state.selectedProductId || null,
-    nombre,
-    cantidad,
-    precio,
-    total: cantidad * precio
-  });
-
-  renderInvoiceTable();
-  recalculateInvoice();
-
-  el.productoNombre.value = "";
-  el.productoCantidad.value = "";
-  el.productoPrecio.value = "";
-  document.activeElement?.blur();
-  
-  document.querySelector(".table-wrap")?.scrollIntoView({
-    behavior: "smooth",
-    block: "start"
-  });
-  state.selectedProductId = null;
-
-  if (el.productoSuggestions) el.productoSuggestions.classList.add("hidden");
-
-  setStatus(el.facturaMessage, "");
-}
 async function saveSettings() {
   if (!state.currentUser) return;
 
@@ -774,6 +729,44 @@ async function saveSettings() {
   setStatus(el.ajustesMessage, "Ajustes guardados.");
 }
 
+function addInvoiceItem() {
+  const nombre = el.productoNombre.value.trim();
+  const cantidad = parseFloat(el.productoCantidad.value);
+  const precio = parseFloat(el.productoPrecio.value);
+
+  if (!nombre || isNaN(cantidad) || isNaN(precio) || cantidad <= 0 || precio < 0) {
+    setStatus(el.facturaMessage, "Completa producto, cantidad y precio correctamente.", true);
+    return;
+  }
+
+  state.invoiceItems.push({
+    product_id: state.selectedProductId || null,
+    nombre,
+    cantidad,
+    precio,
+    total: cantidad * precio
+  });
+
+  renderInvoiceTable();
+  recalculateInvoice();
+
+  el.productoNombre.value = "";
+  el.productoCantidad.value = "";
+  el.productoPrecio.value = "";
+
+  document.activeElement?.blur();
+  document.querySelector(".table-wrap")?.scrollIntoView({
+    behavior: "smooth",
+    block: "nearest"
+  });
+
+  state.selectedProductId = null;
+
+  if (el.productoSuggestions) el.productoSuggestions.classList.add("hidden");
+
+  setStatus(el.facturaMessage, "");
+}
+
 function removeInvoiceItem(index) {
   state.invoiceItems.splice(index, 1);
   renderInvoiceTable();
@@ -781,6 +774,7 @@ function removeInvoiceItem(index) {
 }
 
 async function saveInvoice() {
+  if (!state.currentUser) return;
 
   if (hasReachedMonthlyLimit()) {
     setStatus(
@@ -792,8 +786,6 @@ async function saveInvoice() {
     updateFacturaAvailability();
     return;
   }
-  
-  if (!state.currentUser) return;
 
   if (!state.invoiceItems.length) {
     setStatus(el.facturaMessage, "Agrega al menos un producto.", true);
@@ -864,7 +856,6 @@ async function saveInvoice() {
   clearInvoiceForm();
   updateFacturaAvailability();
 }
-
 async function loadInvoices() {
   if (!state.currentUser) return;
 
@@ -1001,6 +992,7 @@ function renderHistorial() {
     </div>
   `).join("");
 }
+
 async function saveClient() {
   if (!state.currentUser) return;
 
@@ -1103,7 +1095,6 @@ async function saveProduct() {
   await loadProducts();
   renderProducts();
 }
-
 async function loadProducts() {
   if (!state.currentUser) return;
 
@@ -1313,6 +1304,7 @@ async function saveProductEdit() {
   renderProducts();
   setStatus(el.productosMessage, "Producto actualizado.");
 }
+
 function renderProductSuggestions(filter = "") {
   if (!el.productoSuggestions) return;
 
@@ -1416,7 +1408,6 @@ function selectClient(clientId) {
   el.clienteSuggestions.classList.add("hidden");
   updateClientSummary();
 }
-
 function bindLogoUpload() {
   if (!el.logoInput || !el.dropArea) return;
 
@@ -1449,15 +1440,6 @@ function bindLogoUpload() {
 }
 
 function bindEvents() {
-
-  if (el.themeSwatches) {
-    el.themeSwatches.forEach(btn => {
-      btn.addEventListener("click", () => {
-        applyTheme(btn.dataset.theme);
-      });
-    });
-  }
-  
   if (state.isBindingEvents) return;
   state.isBindingEvents = true;
 
@@ -1476,7 +1458,10 @@ function bindEvents() {
   if (el.btnRefreshDashboard) {
     el.btnRefreshDashboard.addEventListener("click", async () => {
       await loadInvoices();
+      await loadMonthlyInvoiceUsage();
       renderDashboard();
+      updateUsageBanner();
+      updateFacturaAvailability();
     });
   }
 
@@ -1645,7 +1630,10 @@ function bindEvents() {
   if (el.btnRefreshHistorial) {
     el.btnRefreshHistorial.addEventListener("click", async () => {
       await loadInvoices();
+      await loadMonthlyInvoiceUsage();
       renderHistorial();
+      updateUsageBanner();
+      updateFacturaAvailability();
     });
   }
 
@@ -1708,8 +1696,17 @@ function bindEvents() {
     });
   }
 
+  if (el.themeSwatches) {
+    el.themeSwatches.forEach(btn => {
+      btn.addEventListener("click", () => {
+        applyTheme(btn.dataset.theme);
+      });
+    });
+  }
+
   bindLogoUpload();
 }
+
 async function initApp() {
   if (state.isBootstrapping) return;
   state.isBootstrapping = true;
@@ -1736,12 +1733,11 @@ async function initApp() {
     state.lastSessionUserId = session.user.id;
     showAppView();
 
-   await Promise.all([
-    loadInvoices(),
-    loadClients(),
-    loadProducts(),
-    loadMonthlyInvoiceUsage()
-]);
+    await Promise.all([
+      loadInvoices(),
+      loadClients(),
+      loadProducts(),
+      loadMonthlyInvoiceUsage()
     ]);
 
     renderDashboard();
@@ -1749,7 +1745,6 @@ async function initApp() {
     renderClients();
     renderProducts();
     updateUsageBanner();
-    updateFacturaAvailability();
 
     if (!sameUser) {
       clearInvoiceForm();
@@ -1758,10 +1753,12 @@ async function initApp() {
       showView("dashboard");
     } else {
       renderInvoiceTable();
-      updateInvoiceActionButtons();
       recalculateInvoice();
       showView(state.currentView || "dashboard");
     }
+
+    updateFacturaAvailability();
+    updateInvoiceActionButtons();
   } catch (error) {
     console.error("initApp error:", error);
     showLoginView("No se pudo restaurar la sesión.");
