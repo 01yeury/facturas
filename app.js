@@ -43,6 +43,10 @@ const state = {
 };
 
 const el = {
+  usageBanner: document.getElementById("usageBanner"),
+  usageBannerText: document.getElementById("usageBannerText"),
+  btnGoPremium: document.getElementById("btnGoPremium"),
+  facturaBlockedBox: document.getElementById("facturaBlockedBox"),
   loginView: document.getElementById("loginView"),
   appShell: document.getElementById("appShell"),
   authEmail: document.getElementById("authEmail"),
@@ -350,6 +354,128 @@ function updateClientSummary() {
   el.clienteResumen.classList.remove("hidden");
 }
 
+function getCurrentMonthRange() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
+
+  return {
+    startISO: start.toISOString(),
+    endISO: end.toISOString()
+  };
+}
+
+async function loadMonthlyInvoiceUsage() {
+  if (!state.currentUser || state.isPremium) {
+    state.monthlyInvoiceUsed = 0;
+    return;
+  }
+
+  const { startISO, endISO } = getCurrentMonthRange();
+
+  const { count, error } = await supabaseClient
+    .from("invoices")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", state.currentUser.id)
+    .gte("created_at", startISO)
+    .lt("created_at", endISO);
+
+  if (error) {
+    console.error("loadMonthlyInvoiceUsage error:", error);
+    state.monthlyInvoiceUsed = 0;
+    return;
+  }
+
+  state.monthlyInvoiceUsed = count || 0;
+}
+
+function getRemainingInvoicesThisMonth() {
+  if (state.isPremium) return Infinity;
+  return Math.max(0, state.monthlyInvoiceLimit - state.monthlyInvoiceUsed);
+}
+
+function hasReachedMonthlyLimit() {
+  if (state.isPremium) return false;
+  return state.monthlyInvoiceUsed >= state.monthlyInvoiceLimit;
+}
+
+function updateUsageBanner() {
+  if (!el.usageBanner || !el.usageBannerText) return;
+
+  if (state.isPremium) {
+    el.usageBanner.classList.remove("hidden");
+    el.usageBanner.classList.add("premium");
+    el.usageBanner.classList.remove("limit-reached");
+    el.usageBannerText.textContent = "Eres Premium. Facturación ilimitada activa.";
+    return;
+  }
+
+  const remaining = getRemainingInvoicesThisMonth();
+
+  el.usageBanner.classList.remove("hidden");
+  el.usageBanner.classList.remove("premium");
+
+  if (remaining <= 0) {
+    el.usageBanner.classList.add("limit-reached");
+    el.usageBannerText.textContent = "Ya usaste tus 10 facturas de este mes. Hazte Premium para seguir.";
+  } else {
+    el.usageBanner.classList.remove("limit-reached");
+    el.usageBannerText.textContent = `Te quedan ${remaining} factura${remaining === 1 ? "" : "s"} este mes.`;
+  }
+}
+
+function updateFacturaAvailability() {
+  const blocked = hasReachedMonthlyLimit();
+
+  if (el.facturaBlockedBox) {
+    el.facturaBlockedBox.classList.toggle("hidden", !blocked);
+  }
+
+  const facturaCard = document.querySelector("#view-factura .section-card");
+  if (facturaCard) {
+    facturaCard.classList.toggle("factura-disabled", blocked);
+  }
+
+  if (el.btnGoFactura) {
+    el.btnGoFactura.disabled = blocked;
+  }
+
+  if (el.btnAgregarProducto) {
+    el.btnAgregarProducto.disabled = blocked;
+  }
+
+  const facturaInputs = document.querySelectorAll(
+    '#view-factura input, #view-factura select, #view-factura textarea, #view-factura .toggle-switch'
+  );
+
+  facturaInputs.forEach(node => {
+    if (node.classList.contains("toggle-switch")) {
+      node.style.pointerEvents = blocked ? "none" : "";
+      node.style.opacity = blocked ? "0.6" : "";
+    } else {
+      node.disabled = blocked;
+    }
+  });
+
+  el.productoSuggestions?.classList.add("hidden");
+  el.clienteSuggestions?.classList.add("hidden");
+
+  updateInvoiceActionButtons();
+}
+
+function updateInvoiceActionButtons() {
+  const hasItems = state.invoiceItems.length > 0;
+  const blocked = hasReachedMonthlyLimit();
+
+  if (el.btnGuardarFactura) {
+    el.btnGuardarFactura.disabled = blocked || !hasItems;
+  }
+
+  if (el.btnImprimirFactura) {
+    el.btnImprimirFactura.disabled = blocked || !hasItems;
+  }
+}
+
 function openMoreDrawer() {
   if (!el.moreDrawer) return;
   el.moreDrawer.classList.remove("hidden");
@@ -655,6 +781,18 @@ function removeInvoiceItem(index) {
 }
 
 async function saveInvoice() {
+
+  if (hasReachedMonthlyLimit()) {
+    setStatus(
+      el.facturaMessage,
+      "Ya alcanzaste tu límite mensual de 10 facturas. Hazte Premium para seguir.",
+      true
+    );
+    updateUsageBanner();
+    updateFacturaAvailability();
+    return;
+  }
+  
   if (!state.currentUser) return;
 
   if (!state.invoiceItems.length) {
@@ -719,9 +857,12 @@ async function saveInvoice() {
 
   setStatus(el.facturaMessage, "Factura guardada correctamente.");
   await loadInvoices();
+  await loadMonthlyInvoiceUsage();
   renderDashboard();
   renderHistorial();
+  updateUsageBanner();
   clearInvoiceForm();
+  updateFacturaAvailability();
 }
 
 async function loadInvoices() {
@@ -1595,16 +1736,20 @@ async function initApp() {
     state.lastSessionUserId = session.user.id;
     showAppView();
 
-    await Promise.all([
-      loadInvoices(),
-      loadClients(),
-      loadProducts()
+   await Promise.all([
+    loadInvoices(),
+    loadClients(),
+    loadProducts(),
+    loadMonthlyInvoiceUsage()
+]);
     ]);
 
     renderDashboard();
     renderHistorial();
     renderClients();
     renderProducts();
+    updateUsageBanner();
+    updateFacturaAvailability();
 
     if (!sameUser) {
       clearInvoiceForm();
