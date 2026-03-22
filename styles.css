@@ -1322,3 +1322,8 @@ label{
     height:40px;
   }
 }
+button:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+  transform:none !important;
+}
