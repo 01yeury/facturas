@@ -302,11 +302,11 @@ function renderInvoiceTable() {
 
   el.tablaProductos.innerHTML = state.invoiceItems.map((item, index) => `
     <tr>
-      <td>${item.nombre}</td>
-      <td class="right">${item.cantidad}</td>
-      <td class="right">${money(item.precio)}</td>
-      <td class="right">${money(item.total)}</td>
-      <td class="right">
+      <td data-label="Producto">${item.nombre}</td>
+      <td data-label="Cant." class="right">${item.cantidad}</td>
+      <td data-label="Precio" class="right">${money(item.precio)}</td>
+      <td data-label="Total" class="right">${money(item.total)}</td>
+      <td data-label="Acción" class="right">
         <button type="button" class="btn-remove" data-remove-index="${index}">
           Quitar
         </button>
