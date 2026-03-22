@@ -36,7 +36,10 @@ const state = {
   authReady: false,
   isBootstrapping: false,
   isBindingEvents: false,
-  lastSessionUserId: null
+  lastSessionUserId: null,
+  monthlyInvoiceLimit: 10,
+  monthlyInvoiceUsed: 0,
+  isPremium: false,
 };
 
 const el = {
@@ -499,7 +502,8 @@ async function ensureBusinessSettings(user) {
     phone: "",
     address: "",
     default_currency: "DOP",
-    use_default_itbis: true
+    use_default_itbis: true,
+    is_premium: false
   };
 
   const { error: insertError } = await supabaseClient
@@ -528,6 +532,7 @@ async function loadProfileFromSession(session) {
     theme: business.theme || "pink"
   };
 
+  state.isPremium = !!business.is_premium;
   applyProfileToUI();
   return true;
 }
