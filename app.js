@@ -1,6 +1,17 @@
 const SUPABASE_URL = "https://exiedneezuzkdqfeqxlq.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4aWVkbmVlenV6a2RxZmVxeGxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMTAxODAsImV4cCI6MjA4ODU4NjE4MH0.bVV5mlGZURw_H-xw0kVN9dI8jQ4NN9dgPQ9HlN4krEY";
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  }
+);
 
 const state = {
   currentUser: null,
@@ -20,7 +31,11 @@ const state = {
   selectedInvoice: null,
   selectedInvoiceItems: [],
   editingClientId: null,
-  editingProductId: null
+  editingProductId: null,
+  authReady: false,
+  isBootstrapping: false,
+  isBindingEvents: false,
+  lastSessionUserId: null
 };
 
 const el = {
@@ -131,7 +146,7 @@ const el = {
   btnBottomMore: document.getElementById("btnBottomMore"),
   moreDrawer: document.getElementById("moreDrawer"),
   moreDrawerItems: document.querySelectorAll("[data-more-view]"),
-  clienteRncManual: document.getElementById("clienteRncManual"),
+  clienteRncManual: document.getElementById("clienteRncManual")
 };
 
 const viewTitles = {
@@ -145,7 +160,12 @@ const viewTitles = {
 };
 
 function money(value) {
-  return `RD$${Number(value || 0).toFixed(2)}`;
+  return new Intl.NumberFormat("es-DO", {
+    style: "currency",
+    currency: "DOP",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(Number(value || 0));
 }
 
 function setStatus(target, text, isError = false) {
@@ -161,15 +181,30 @@ function setToggle(button, active) {
 }
 
 function toggleButton(button) {
+  if (!button) return false;
   const active = !button.classList.contains("active");
   setToggle(button, active);
   return active;
 }
 
+function showLoginView(message = "") {
+  state.currentUser = null;
+  state.lastSessionUserId = null;
+
+  if (el.appShell) el.appShell.classList.add("hidden");
+  if (el.loginView) el.loginView.classList.remove("hidden");
+  if (message) setStatus(el.authMessage, message);
+}
+
+function showAppView() {
+  if (el.loginView) el.loginView.classList.add("hidden");
+  if (el.appShell) el.appShell.classList.remove("hidden");
+}
+
 function resetInvoiceMeta() {
   const now = new Date();
-  el.numeroFactura.textContent = "JS-" + now.getTime();
-  el.fechaFactura.textContent = now.toLocaleDateString("es-DO");
+  if (el.numeroFactura) el.numeroFactura.textContent = `JS-${now.getTime()}`;
+  if (el.fechaFactura) el.fechaFactura.textContent = now.toLocaleDateString("es-DO");
 }
 
 function showView(viewName) {
@@ -183,7 +218,10 @@ function showView(viewName) {
     btn.classList.toggle("active", btn.dataset.view === viewName);
   });
 
-  el.headerTitle.textContent = viewTitles[viewName] || "Inicio";
+  if (el.headerTitle) {
+    el.headerTitle.textContent = viewTitles[viewName] || "Inicio";
+  }
+
   closeMoreDrawer();
 }
 
@@ -192,6 +230,9 @@ function updateHeaderCompany() {
   if (el.headerCompany) el.headerCompany.textContent = company;
   if (el.dashboardCompany) el.dashboardCompany.textContent = company;
   if (el.empresaNombre) el.empresaNombre.textContent = company;
+  if (el.detalleBusinessName && !state.selectedInvoice) {
+    el.detalleBusinessName.textContent = company;
+  }
 }
 
 function updateLogo() {
@@ -200,9 +241,25 @@ function updateLogo() {
   if (el.logoSettingsPreview) el.logoSettingsPreview.src = logo;
 }
 
+function getCurrentClientRnc() {
+  if (!el.toggleEmpresa || !el.toggleEmpresa.classList.contains("active")) return "";
+
+  const selectedClient = state.clients.find(
+    client => String(client.id) === String(state.selectedClientId)
+  );
+
+  if (selectedClient && selectedClient.rnc) {
+    return selectedClient.rnc;
+  }
+
+  return el.clienteRncManual ? el.clienteRncManual.value.trim() : "";
+}
+
 function updateClientSummary() {
+  if (!el.toggleCliente || !el.clienteResumen || !el.clienteNombre) return;
+
   const clienteActivo = el.toggleCliente.classList.contains("active");
-  const empresaActiva = el.toggleEmpresa.classList.contains("active");
+  const empresaActiva = el.toggleEmpresa && el.toggleEmpresa.classList.contains("active");
   const nombre = el.clienteNombre.value.trim();
 
   if (!clienteActivo || !nombre) {
@@ -222,17 +279,6 @@ function updateClientSummary() {
   el.clienteResumen.classList.remove("hidden");
 }
 
-function getCurrentClientRnc() {
-  if (!el.toggleEmpresa.classList.contains("active")) return "";
-
-  const selectedClient = state.clients.find(c => String(c.id) === String(state.selectedClientId));
-  if (selectedClient && selectedClient.rnc) {
-    return selectedClient.rnc;
-  }
-
-  return el.clienteRncManual.value.trim();
-}
-
 function openMoreDrawer() {
   if (!el.moreDrawer) return;
   el.moreDrawer.classList.remove("hidden");
@@ -242,10 +288,15 @@ function closeMoreDrawer() {
   if (!el.moreDrawer) return;
   el.moreDrawer.classList.add("hidden");
 }
-
 function renderInvoiceTable() {
+  if (!el.tablaProductos) return;
+
   if (!state.invoiceItems.length) {
-    el.tablaProductos.innerHTML = `<tr><td colspan="5" class="empty-cell">No hay productos agregados.</td></tr>`;
+    el.tablaProductos.innerHTML = `
+      <tr>
+        <td colspan="5" class="empty-cell">No hay productos agregados.</td>
+      </tr>
+    `;
     return;
   }
 
@@ -256,25 +307,30 @@ function renderInvoiceTable() {
       <td class="right">${money(item.precio)}</td>
       <td class="right">${money(item.total)}</td>
       <td class="right">
-        <button type="button" class="icon-danger" onclick="removeInvoiceItem(${index})">Quitar</button>
+        <button type="button" class="btn-remove" data-remove-index="${index}">
+          Quitar
+        </button>
       </td>
     </tr>
   `).join("");
 }
 
 function recalculateInvoice() {
+  if (!el.totalFactura) return;
+
   const total = state.invoiceItems.reduce((acc, item) => acc + item.total, 0);
 
   if (state.config.itbis) {
     const subtotal = total / 1.18;
     const itbis = total - subtotal;
-    el.subtotalFactura.textContent = money(subtotal);
-    el.itbisFactura.textContent = money(itbis);
-    el.itbisRow.style.display = "";
+
+    if (el.subtotalFactura) el.subtotalFactura.textContent = money(subtotal);
+    if (el.itbisFactura) el.itbisFactura.textContent = money(itbis);
+    if (el.itbisRow) el.itbisRow.style.display = "";
   } else {
-    el.subtotalFactura.textContent = money(total);
-    el.itbisFactura.textContent = money(0);
-    el.itbisRow.style.display = "none";
+    if (el.subtotalFactura) el.subtotalFactura.textContent = money(total);
+    if (el.itbisFactura) el.itbisFactura.textContent = money(0);
+    if (el.itbisRow) el.itbisRow.style.display = "none";
   }
 
   el.totalFactura.textContent = money(total);
@@ -290,22 +346,25 @@ function clearInvoiceForm() {
   setStatus(el.facturaMessage, "");
   resetInvoiceMeta();
 
-  el.clienteNombre.value = "";
-  el.productoNombre.value = "";
-  el.productoCantidad.value = "";
-  el.productoPrecio.value = "";
+  if (el.clienteNombre) el.clienteNombre.value = "";
+  if (el.productoNombre) el.productoNombre.value = "";
+  if (el.productoCantidad) el.productoCantidad.value = "";
+  if (el.productoPrecio) el.productoPrecio.value = "";
 
   setToggle(el.toggleCliente, false);
   setToggle(el.toggleEmpresa, false);
 
-  el.clienteArea.classList.add("hidden");
-  el.rncMostrar.classList.add("hidden");
-  el.clienteSuggestions.classList.add("hidden");
-  el.productoSuggestions.classList.add("hidden");
+  if (el.clienteArea) el.clienteArea.classList.add("hidden");
+  if (el.rncMostrar) el.rncMostrar.classList.add("hidden");
+  if (el.clienteSuggestions) el.clienteSuggestions.classList.add("hidden");
+  if (el.productoSuggestions) el.productoSuggestions.classList.add("hidden");
 
-  el.clienteRncManual.value = "";
-  el.clienteRncManual.classList.add("hidden");
-  el.rncTexto.textContent = "";
+  if (el.clienteRncManual) {
+    el.clienteRncManual.value = "";
+    el.clienteRncManual.classList.add("hidden");
+  }
+
+  if (el.rncTexto) el.rncTexto.textContent = "";
 
   updateClientSummary();
 }
@@ -314,9 +373,9 @@ function applyProfileToUI() {
   updateHeaderCompany();
   updateLogo();
 
-  el.empresaInput.value = state.config.empresa || "JeanSkirt";
-  el.rncInput.value = state.config.rnc || "";
-  el.rncTexto.textContent = state.config.rnc || "";
+  if (el.empresaInput) el.empresaInput.value = state.config.empresa || "JeanSkirt";
+  if (el.rncInput) el.rncInput.value = state.config.rnc || "";
+  if (el.rncTexto) el.rncTexto.textContent = state.config.rnc || "";
 
   setToggle(el.toggleItbis, !!state.config.itbis);
 
@@ -376,11 +435,10 @@ async function ensureBusinessSettings(user) {
   return defaultSettings;
 }
 
-async function loadProfile() {
-  const { data, error } = await supabaseClient.auth.getUser();
-  if (error || !data?.user) return false;
+async function loadProfileFromSession(session) {
+  if (!session?.user) return false;
 
-  state.currentUser = data.user;
+  state.currentUser = session.user;
 
   await ensureProfile(state.currentUser);
   const business = await ensureBusinessSettings(state.currentUser);
@@ -388,7 +446,9 @@ async function loadProfile() {
   state.config = {
     empresa: business.business_name || "JeanSkirt",
     rnc: business.business_rnc || "",
-    itbis: typeof business.use_default_itbis === "boolean" ? business.use_default_itbis : true,
+    itbis: typeof business.use_default_itbis === "boolean"
+      ? business.use_default_itbis
+      : true,
     logo: business.business_logo || ""
   };
 
@@ -412,7 +472,7 @@ async function registerUser() {
     return;
   }
 
-  setStatus(el.authMessage, "Cuenta creada. Si Supabase pide confirmación, revisa tu correo.");
+  setStatus(el.authMessage, "Cuenta creada. Revisa tu correo si se requiere confirmación.");
 }
 
 async function loginUser() {
@@ -424,7 +484,10 @@ async function loginUser() {
     return;
   }
 
-  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  const { error } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
 
   if (error) {
     setStatus(el.authMessage, error.message, true);
@@ -432,43 +495,11 @@ async function loginUser() {
   }
 
   setStatus(el.authMessage, "Sesión iniciada.");
-  await initApp();
 }
 
 async function logoutUser() {
   await supabaseClient.auth.signOut();
-  state.currentUser = null;
-  el.appShell.classList.add("hidden");
-  el.loginView.classList.remove("hidden");
-  setStatus(el.authMessage, "Sesión cerrada.");
-}
-
-async function saveSettings() {
-  if (!state.currentUser) return;
-
-  state.config.empresa = el.empresaInput.value.trim() || "JeanSkirt";
-  state.config.rnc = el.rncInput.value.trim();
-  state.config.itbis = el.toggleItbis.classList.contains("active");
-
-  const payload = {
-    user_id: state.currentUser.id,
-    business_name: state.config.empresa,
-    business_rnc: state.config.rnc,
-    business_logo: state.config.logo || "",
-    use_default_itbis: state.config.itbis
-  };
-
-  const { error } = await supabaseClient
-    .from("business_settings")
-    .upsert(payload, { onConflict: "user_id" });
-
-  if (error) {
-    setStatus(el.ajustesMessage, error.message, true);
-    return;
-  }
-
-  applyProfileToUI();
-  setStatus(el.ajustesMessage, "Ajustes guardados.");
+  showLoginView("Sesión cerrada.");
 }
 
 function addInvoiceItem() {
@@ -498,21 +529,44 @@ function addInvoiceItem() {
   el.productoNombre.focus();
 
   state.selectedProductId = null;
-  el.productoSuggestions.classList.add("hidden");
+
+  if (el.productoSuggestions) el.productoSuggestions.classList.add("hidden");
 
   setStatus(el.facturaMessage, "");
 }
+async function saveSettings() {
+  if (!state.currentUser) return;
 
-window.removeInvoiceItem = function(index) {
+  state.config.empresa = el.empresaInput.value.trim() || "JeanSkirt";
+  state.config.rnc = el.rncInput.value.trim();
+  state.config.itbis = el.toggleItbis.classList.contains("active");
+
+  const payload = {
+    user_id: state.currentUser.id,
+    business_name: state.config.empresa,
+    business_rnc: state.config.rnc,
+    business_logo: state.config.logo || "",
+    use_default_itbis: state.config.itbis
+  };
+
+  const { error } = await supabaseClient
+    .from("business_settings")
+    .upsert(payload, { onConflict: "user_id" });
+
+  if (error) {
+    setStatus(el.ajustesMessage, error.message, true);
+    return;
+  }
+
+  applyProfileToUI();
+  setStatus(el.ajustesMessage, "Ajustes guardados.");
+}
+
+function removeInvoiceItem(index) {
   state.invoiceItems.splice(index, 1);
   renderInvoiceTable();
   recalculateInvoice();
-};
-
-
-window.openClientEdit = openClientEdit;
-window.openProductEdit = openProductEdit;
-window.openInvoiceDetail = openInvoiceDetail;
+}
 
 async function saveInvoice() {
   if (!state.currentUser) return;
@@ -526,7 +580,10 @@ async function saveInvoice() {
   const subtotal = state.config.itbis ? +(total / 1.18).toFixed(2) : +total.toFixed(2);
   const taxTotal = state.config.itbis ? +(total - subtotal).toFixed(2) : 0;
 
-  const cliente = el.toggleCliente.classList.contains("active") ? el.clienteNombre.value.trim() : "";
+  const cliente = el.toggleCliente.classList.contains("active")
+    ? el.clienteNombre.value.trim()
+    : "";
+
   const esEmpresa = el.toggleEmpresa.classList.contains("active");
 
   const invoicePayload = {
@@ -662,8 +719,12 @@ function renderDashboard() {
   const todayKey = today.toISOString().slice(0, 10);
   const monthKey = today.toISOString().slice(0, 7);
 
-  const todayInvoices = state.invoices.filter(item => String(item.created_at || "").slice(0, 10) === todayKey);
-  const monthInvoices = state.invoices.filter(item => String(item.created_at || "").slice(0, 7) === monthKey);
+  const todayInvoices = state.invoices.filter(
+    item => String(item.created_at || "").slice(0, 10) === todayKey
+  );
+  const monthInvoices = state.invoices.filter(
+    item => String(item.created_at || "").slice(0, 7) === monthKey
+  );
 
   const todaySales = todayInvoices.reduce((sum, item) => sum + Number(item.total || 0), 0);
   const monthSales = monthInvoices.reduce((sum, item) => sum + Number(item.total || 0), 0);
@@ -704,16 +765,15 @@ function renderHistorial() {
 
   el.historialList.classList.remove("empty-state");
   el.historialList.innerHTML = filtered.map(invoice => `
-  <div class="list-item" style="cursor:pointer" onclick="openInvoiceDetail('${invoice.id}')">
-    <div class="list-title">${invoice.invoice_number || "Sin número"} - ${money(invoice.total)}</div>
-    <div class="list-meta">
-      ${invoice.client_name || "Sin cliente"} • ${new Date(invoice.created_at).toLocaleDateString("es-DO")}
-      ${invoice.client_rnc ? ` • RNC ${invoice.client_rnc}` : ""}
+    <div class="list-item invoice-history-item" style="cursor:pointer" data-invoice-id="${invoice.id}">
+      <div class="list-title">${invoice.invoice_number || "Sin número"} - ${money(invoice.total)}</div>
+      <div class="list-meta">
+        ${invoice.client_name || "Sin cliente"} • ${new Date(invoice.created_at).toLocaleDateString("es-DO")}
+        ${invoice.client_rnc ? ` • RNC ${invoice.client_rnc}` : ""}
+      </div>
     </div>
-  </div>
-`).join("");
+  `).join("");
 }
-
 async function saveClient() {
   if (!state.currentUser) return;
 
@@ -773,7 +833,7 @@ function renderClients() {
 
   el.clientesList.classList.remove("empty-state");
   el.clientesList.innerHTML = state.clients.map(client => `
-  <div class="list-item" style="cursor:pointer" onclick="openClientEdit('${client.id}')">
+    <div class="list-item client-list-item" style="cursor:pointer" data-client-id="${client.id}">
       <div class="list-title">${client.name}</div>
       <div class="list-meta">${client.rnc || "Sin RNC"}</div>
     </div>
@@ -824,7 +884,6 @@ async function loadProducts() {
     .from("products")
     .select("*")
     .eq("user_id", state.currentUser.id)
-    .eq("is_active", true)
     .order("name", { ascending: true });
 
   if (error) {
@@ -837,15 +896,17 @@ async function loadProducts() {
 }
 
 function renderProducts() {
-  if (!state.products.length) {
+  const activeProducts = state.products.filter(product => product.is_active !== false);
+
+  if (!activeProducts.length) {
     el.productosList.innerHTML = "No hay productos guardados.";
     el.productosList.classList.add("empty-state");
     return;
   }
 
   el.productosList.classList.remove("empty-state");
-  el.productosList.innerHTML = state.products.map(product => `
-    <div class="list-item" style="cursor:pointer" onclick="openProductEdit('${product.id}')">
+  el.productosList.innerHTML = activeProducts.map(product => `
+    <div class="list-item product-list-item" style="cursor:pointer" data-product-id="${product.id}">
       <div class="list-title">${product.name}</div>
       <div class="list-meta">
         ${money(product.price)}
@@ -861,7 +922,7 @@ function buildPrintHTML({ invoice, items }) {
     : "";
 
   const clienteRncHTML = invoice.client_rnc
-    ? `<div class="print-meta"><strong>RNC:</strong> ${invoice.client_rnc}</div>`
+    ? `<div class="print-meta"><strong>RNC cliente:</strong> ${invoice.client_rnc}</div>`
     : "";
 
   return `
@@ -869,8 +930,8 @@ function buildPrintHTML({ invoice, items }) {
       <div class="print-header">
         ${state.config.logo ? `<img src="${state.config.logo}" alt="Logo" class="print-logo">` : ""}
         <div class="print-business">${invoice.business_name || state.config.empresa || "Empresa"}</div>
-        <div class="print-meta"><strong>Factura No.:</strong> ${invoice.invoice_number || ""}</div>
         <div class="print-meta"><strong>RNC:</strong> ${invoice.business_rnc || state.config.rnc || ""}</div>
+        <div class="print-meta"><strong>Factura No.:</strong> ${invoice.invoice_number || ""}</div>
       </div>
 
       <div class="print-client">
@@ -1025,16 +1086,16 @@ async function saveProductEdit() {
   renderProducts();
   setStatus(el.productosMessage, "Producto actualizado.");
 }
-
 function renderProductSuggestions(filter = "") {
   if (!el.productoSuggestions) return;
 
   const q = filter.trim().toLowerCase();
-
   const filtered = state.products.filter(product =>
-    !q ||
-    String(product.name || "").toLowerCase().includes(q) ||
-    String(product.description || "").toLowerCase().includes(q)
+    product.is_active !== false && (
+      !q ||
+      String(product.name || "").toLowerCase().includes(q) ||
+      String(product.description || "").toLowerCase().includes(q)
+    )
   );
 
   if (!filtered.length) {
@@ -1054,31 +1115,12 @@ function renderProductSuggestions(filter = "") {
   `).join("");
 
   el.productoSuggestions.classList.remove("hidden");
-
-  el.productoSuggestions.querySelectorAll(".autocomplete-item").forEach(item => {
-    item.addEventListener("click", () => {
-      const productId = item.dataset.productId;
-      const product = state.products.find(p => String(p.id) === String(productId));
-      if (!product) return;
-
-      state.selectedProductId = product.id;
-      el.productoNombre.value = product.name || "";
-      el.productoPrecio.value = product.price ?? "";
-
-      if (!el.productoCantidad.value) {
-        el.productoCantidad.value = 1;
-      }
-
-      el.productoSuggestions.classList.add("hidden");
-    });
-  });
 }
 
 function renderClientSuggestions(filter = "") {
   if (!el.clienteSuggestions) return;
 
   const q = filter.trim().toLowerCase();
-
   const filtered = state.clients.filter(client =>
     !q ||
     String(client.name || "").toLowerCase().includes(q) ||
@@ -1103,40 +1145,54 @@ function renderClientSuggestions(filter = "") {
   `).join("");
 
   el.clienteSuggestions.classList.remove("hidden");
+}
 
-  el.clienteSuggestions.querySelectorAll(".autocomplete-item").forEach(item => {
-    item.addEventListener("click", () => {
-      const clientId = item.dataset.clientId;
-      const client = state.clients.find(c => String(c.id) === String(clientId));
-      if (!client) return;
+function selectProduct(productId) {
+  const product = state.products.find(p => String(p.id) === String(productId));
+  if (!product) return;
 
-      state.selectedClientId = client.id;
-      el.clienteNombre.value = client.name || "";
+  state.selectedProductId = product.id;
+  el.productoNombre.value = product.name || "";
+  el.productoPrecio.value = product.price ?? "";
 
-      setToggle(el.toggleCliente, true);
-      el.clienteArea.classList.remove("hidden");
+  if (!el.productoCantidad.value) {
+    el.productoCantidad.value = 1;
+  }
 
-      if (client.rnc) {
-        setToggle(el.toggleEmpresa, true);
-        el.rncMostrar.classList.remove("hidden");
-        el.rncTexto.textContent = client.rnc;
-        el.clienteRncManual.classList.add("hidden");
-        el.clienteRncManual.value = "";
-      } else {
-        setToggle(el.toggleEmpresa, false);
-        el.rncMostrar.classList.add("hidden");
-        el.rncTexto.textContent = "";
-        el.clienteRncManual.classList.add("hidden");
-        el.clienteRncManual.value = "";
-      }
+  el.productoSuggestions.classList.add("hidden");
+}
 
-      el.clienteSuggestions.classList.add("hidden");
-      updateClientSummary();
-    });
-  });
+function selectClient(clientId) {
+  const client = state.clients.find(c => String(c.id) === String(clientId));
+  if (!client) return;
+
+  state.selectedClientId = client.id;
+  el.clienteNombre.value = client.name || "";
+
+  setToggle(el.toggleCliente, true);
+  el.clienteArea.classList.remove("hidden");
+
+  if (client.rnc) {
+    setToggle(el.toggleEmpresa, true);
+    el.rncMostrar.classList.remove("hidden");
+    el.rncTexto.textContent = client.rnc;
+    el.clienteRncManual.classList.add("hidden");
+    el.clienteRncManual.value = "";
+  } else {
+    setToggle(el.toggleEmpresa, false);
+    el.rncMostrar.classList.add("hidden");
+    el.rncTexto.textContent = "";
+    el.clienteRncManual.classList.add("hidden");
+    el.clienteRncManual.value = "";
+  }
+
+  el.clienteSuggestions.classList.add("hidden");
+  updateClientSummary();
 }
 
 function bindLogoUpload() {
+  if (!el.logoInput || !el.dropArea) return;
+
   el.logoInput.addEventListener("change", event => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -1166,160 +1222,207 @@ function bindLogoUpload() {
 }
 
 function bindEvents() {
-  el.btnLogin.addEventListener("click", loginUser);
-  el.btnRegister.addEventListener("click", registerUser);
-  el.btnLogout.addEventListener("click", logoutUser);
+  if (state.isBindingEvents) return;
+  state.isBindingEvents = true;
 
-  el.navItems.forEach(btn => btn.addEventListener("click", () => showView(btn.dataset.view)));
+  if (el.btnLogin) el.btnLogin.addEventListener("click", loginUser);
+  if (el.btnRegister) el.btnRegister.addEventListener("click", registerUser);
+  if (el.btnLogout) el.btnLogout.addEventListener("click", logoutUser);
 
-  el.btnGoFactura.addEventListener("click", () => showView("factura"));
-
-  el.btnRefreshDashboard.addEventListener("click", async () => {
-    await loadInvoices();
-    renderDashboard();
+  el.navItems.forEach(btn => {
+    btn.addEventListener("click", () => showView(btn.dataset.view));
   });
 
-  el.toggleCliente.addEventListener("click", () => {
-    const active = toggleButton(el.toggleCliente);
-    el.clienteArea.classList.toggle("hidden", !active);
-
-    if (!active) {
-      setToggle(el.toggleEmpresa, false);
-      el.rncMostrar.classList.add("hidden");
-      state.selectedClientId = null;
-    }
-
-    updateClientSummary();
-  });
-
-  if (el.btnCloseClientEdit) {
-    el.btnCloseClientEdit.addEventListener("click", closeClientEdit);
+  if (el.btnGoFactura) {
+    el.btnGoFactura.addEventListener("click", () => showView("factura"));
   }
 
-  if (el.btnSaveClientEdit) {
-    el.btnSaveClientEdit.addEventListener("click", saveClientEdit);
-  }
-
-  if (el.btnCloseProductEdit) {
-    el.btnCloseProductEdit.addEventListener("click", closeProductEdit);
-  }
-
-  if (el.btnSaveProductEdit) {
-    el.btnSaveProductEdit.addEventListener("click", saveProductEdit);
-  }
-
-  if (el.toggleEditProductActive) {
-    el.toggleEditProductActive.addEventListener("click", () => {
-      toggleButton(el.toggleEditProductActive);
+  if (el.btnRefreshDashboard) {
+    el.btnRefreshDashboard.addEventListener("click", async () => {
+      await loadInvoices();
+      renderDashboard();
     });
   }
 
-  el.toggleEmpresa.addEventListener("click", () => {
-    if (!el.toggleCliente.classList.contains("active")) return;
+  if (el.toggleCliente) {
+    el.toggleCliente.addEventListener("click", () => {
+      const active = toggleButton(el.toggleCliente);
+      el.clienteArea.classList.toggle("hidden", !active);
 
-    const active = toggleButton(el.toggleEmpresa);
-    const selectedClient = state.clients.find(c => String(c.id) === String(state.selectedClientId));
+      if (!active) {
+        setToggle(el.toggleEmpresa, false);
+        el.rncMostrar.classList.add("hidden");
+        state.selectedClientId = null;
+      }
 
-    if (active) {
-      el.rncMostrar.classList.remove("hidden");
+      updateClientSummary();
+    });
+  }
 
-      if (selectedClient && selectedClient.rnc) {
-        el.rncTexto.textContent = selectedClient.rnc;
+  if (el.toggleEmpresa) {
+    el.toggleEmpresa.addEventListener("click", () => {
+      if (!el.toggleCliente.classList.contains("active")) return;
+
+      const active = toggleButton(el.toggleEmpresa);
+      const selectedClient = state.clients.find(
+        c => String(c.id) === String(state.selectedClientId)
+      );
+
+      if (active) {
+        el.rncMostrar.classList.remove("hidden");
+
+        if (selectedClient && selectedClient.rnc) {
+          el.rncTexto.textContent = selectedClient.rnc;
+          el.clienteRncManual.classList.add("hidden");
+          el.clienteRncManual.value = "";
+        } else {
+          el.rncTexto.textContent = "";
+          el.clienteRncManual.classList.remove("hidden");
+        }
+      } else {
+        el.rncMostrar.classList.add("hidden");
+        el.rncTexto.textContent = "";
         el.clienteRncManual.classList.add("hidden");
         el.clienteRncManual.value = "";
-      } else {
-        el.rncTexto.textContent = "";
-        el.clienteRncManual.classList.remove("hidden");
       }
-    } else {
-      el.rncMostrar.classList.add("hidden");
-      el.rncTexto.textContent = "";
-      el.clienteRncManual.classList.add("hidden");
-      el.clienteRncManual.value = "";
-    }
 
-    updateClientSummary();
-  });
-  
-  el.clienteRncManual.addEventListener("input", updateClientSummary);
-
-  el.clienteNombre.addEventListener("input", () => {
-    state.selectedClientId = null;
-    renderClientSuggestions(el.clienteNombre.value);
-    updateClientSummary();
-  });
-
-  el.clienteNombre.addEventListener("focus", () => {
-    renderClientSuggestions(el.clienteNombre.value);
-  });
-
-  el.productoNombre.addEventListener("input", () => {
-    state.selectedProductId = null;
-    renderProductSuggestions(el.productoNombre.value);
-  });
-
-  el.productoNombre.addEventListener("focus", () => {
-    renderProductSuggestions(el.productoNombre.value);
-  });
-
-  document.addEventListener("click", (event) => {
-    if (!event.target.closest(".autocomplete-wrap")) {
-      el.productoSuggestions.classList.add("hidden");
-      el.clienteSuggestions.classList.add("hidden");
-    }
-  });
-
-  el.toggleItbis.addEventListener("click", () => {
-    const active = toggleButton(el.toggleItbis);
-    state.config.itbis = active;
-    recalculateInvoice();
-  });
-
-  el.btnAgregarProducto.addEventListener("click", addInvoiceItem);
-  el.btnGuardarFactura.addEventListener("click", saveInvoice);
-
-  el.btnImprimirFactura.addEventListener("click", () => {
-    const total = state.invoiceItems.reduce((acc, item) => acc + item.total, 0);
-    const subtotal = state.config.itbis ? +(total / 1.18).toFixed(2) : +total.toFixed(2);
-    const taxTotal = state.config.itbis ? +(total - subtotal).toFixed(2) : 0;
-  
-    const invoice = {
-      invoice_number: el.numeroFactura.textContent,
-      business_name: state.config.empresa,
-      business_rnc: state.config.rnc,
-      client_name: el.toggleCliente.classList.contains("active") ? el.clienteNombre.value.trim() : "",
-      client_rnc: el.toggleEmpresa.classList.contains("active") ? getCurrentClientRnc() : "",
-      subtotal,
-      tax_total: taxTotal,
-      total
-    };
-  
-    const items = state.invoiceItems.map(item => ({
-      description: item.nombre,
-      quantity: item.cantidad,
-      unit_price: item.precio,
-      line_total: item.total
-    }));
-  
-    printInvoiceData(invoice, items);
-  });
-  el.historialSearch.addEventListener("input", renderHistorial);
-
-  el.btnRefreshHistorial.addEventListener("click", async () => {
-    await loadInvoices();
-    renderHistorial();
-  });
-
-  el.btnGuardarCliente.addEventListener("click", saveClient);
-
-  el.btnRefreshClientes.addEventListener("click", async () => {
-    await loadClients();
-    renderClients();
-  });
-
-  if (el.btnGuardarProducto) {
-    el.btnGuardarProducto.addEventListener("click", saveProduct);
+      updateClientSummary();
+    });
   }
+
+  if (el.clienteRncManual) {
+    el.clienteRncManual.addEventListener("input", updateClientSummary);
+  }
+
+  if (el.clienteNombre) {
+    el.clienteNombre.addEventListener("input", () => {
+      state.selectedClientId = null;
+      renderClientSuggestions(el.clienteNombre.value);
+      updateClientSummary();
+    });
+
+    el.clienteNombre.addEventListener("focus", () => {
+      renderClientSuggestions(el.clienteNombre.value);
+    });
+  }
+
+  if (el.productoNombre) {
+    el.productoNombre.addEventListener("input", () => {
+      state.selectedProductId = null;
+      renderProductSuggestions(el.productoNombre.value);
+    });
+
+    el.productoNombre.addEventListener("focus", () => {
+      renderProductSuggestions(el.productoNombre.value);
+    });
+  }
+
+  document.addEventListener("click", event => {
+    const removeButton = event.target.closest("[data-remove-index]");
+    if (removeButton) {
+      const index = Number(removeButton.dataset.removeIndex);
+      removeInvoiceItem(index);
+      return;
+    }
+
+    const productSuggestion = event.target.closest("[data-product-id]");
+    if (productSuggestion && productSuggestion.closest("#productoSuggestions")) {
+      selectProduct(productSuggestion.dataset.productId);
+      return;
+    }
+
+    const clientSuggestion = event.target.closest("[data-client-id]");
+    if (clientSuggestion && clientSuggestion.closest("#clienteSuggestions")) {
+      selectClient(clientSuggestion.dataset.clientId);
+      return;
+    }
+
+    const invoiceHistoryItem = event.target.closest(".invoice-history-item");
+    if (invoiceHistoryItem) {
+      openInvoiceDetail(invoiceHistoryItem.dataset.invoiceId);
+      return;
+    }
+
+    const clientListItem = event.target.closest(".client-list-item");
+    if (clientListItem) {
+      openClientEdit(clientListItem.dataset.clientId);
+      return;
+    }
+
+    const productListItem = event.target.closest(".product-list-item");
+    if (productListItem) {
+      openProductEdit(productListItem.dataset.productId);
+      return;
+    }
+
+    if (!event.target.closest(".autocomplete-wrap")) {
+      if (el.productoSuggestions) el.productoSuggestions.classList.add("hidden");
+      if (el.clienteSuggestions) el.clienteSuggestions.classList.add("hidden");
+    }
+  });
+
+  if (el.toggleItbis) {
+    el.toggleItbis.addEventListener("click", () => {
+      const active = toggleButton(el.toggleItbis);
+      state.config.itbis = active;
+      recalculateInvoice();
+    });
+  }
+
+  if (el.btnAgregarProducto) el.btnAgregarProducto.addEventListener("click", addInvoiceItem);
+  if (el.btnGuardarFactura) el.btnGuardarFactura.addEventListener("click", saveInvoice);
+
+  if (el.btnImprimirFactura) {
+    el.btnImprimirFactura.addEventListener("click", () => {
+      const total = state.invoiceItems.reduce((acc, item) => acc + item.total, 0);
+      const subtotal = state.config.itbis ? +(total / 1.18).toFixed(2) : +total.toFixed(2);
+      const taxTotal = state.config.itbis ? +(total - subtotal).toFixed(2) : 0;
+
+      const invoice = {
+        invoice_number: el.numeroFactura.textContent,
+        business_name: state.config.empresa,
+        business_rnc: state.config.rnc,
+        client_name: el.toggleCliente.classList.contains("active")
+          ? el.clienteNombre.value.trim()
+          : "",
+        client_rnc: el.toggleEmpresa.classList.contains("active")
+          ? getCurrentClientRnc()
+          : "",
+        subtotal,
+        tax_total: taxTotal,
+        total
+      };
+
+      const items = state.invoiceItems.map(item => ({
+        description: item.nombre,
+        quantity: item.cantidad,
+        unit_price: item.precio,
+        line_total: item.total
+      }));
+
+      printInvoiceData(invoice, items);
+    });
+  }
+
+  if (el.historialSearch) el.historialSearch.addEventListener("input", renderHistorial);
+
+  if (el.btnRefreshHistorial) {
+    el.btnRefreshHistorial.addEventListener("click", async () => {
+      await loadInvoices();
+      renderHistorial();
+    });
+  }
+
+  if (el.btnGuardarCliente) el.btnGuardarCliente.addEventListener("click", saveClient);
+
+  if (el.btnRefreshClientes) {
+    el.btnRefreshClientes.addEventListener("click", async () => {
+      await loadClients();
+      renderClients();
+    });
+  }
+
+  if (el.btnGuardarProducto) el.btnGuardarProducto.addEventListener("click", saveProduct);
 
   if (el.btnRefreshProductos) {
     el.btnRefreshProductos.addEventListener("click", async () => {
@@ -1328,11 +1431,8 @@ function bindEvents() {
     });
   }
 
-  el.btnGuardarAjustes.addEventListener("click", saveSettings);
-
-  if (el.btnVolverHistorial) {
-    el.btnVolverHistorial.addEventListener("click", () => showView("historial"));
-  }
+  if (el.btnGuardarAjustes) el.btnGuardarAjustes.addEventListener("click", saveSettings);
+  if (el.btnVolverHistorial) el.btnVolverHistorial.addEventListener("click", () => showView("historial"));
 
   if (el.btnImprimirDetalle) {
     el.btnImprimirDetalle.addEventListener("click", () => {
@@ -1341,19 +1441,24 @@ function bindEvents() {
     });
   }
 
-  if (el.btnOpenMoreMenu) {
-    el.btnOpenMoreMenu.addEventListener("click", openMoreDrawer);
+  if (el.btnCloseClientEdit) el.btnCloseClientEdit.addEventListener("click", closeClientEdit);
+  if (el.btnSaveClientEdit) el.btnSaveClientEdit.addEventListener("click", saveClientEdit);
+
+  if (el.btnCloseProductEdit) el.btnCloseProductEdit.addEventListener("click", closeProductEdit);
+  if (el.btnSaveProductEdit) el.btnSaveProductEdit.addEventListener("click", saveProductEdit);
+
+  if (el.toggleEditProductActive) {
+    el.toggleEditProductActive.addEventListener("click", () => {
+      toggleButton(el.toggleEditProductActive);
+    });
   }
 
-  if (el.btnBottomMore) {
-    el.btnBottomMore.addEventListener("click", openMoreDrawer);
-  }
+  if (el.btnOpenMoreMenu) el.btnOpenMoreMenu.addEventListener("click", openMoreDrawer);
+  if (el.btnBottomMore) el.btnBottomMore.addEventListener("click", openMoreDrawer);
 
   if (el.moreDrawer) {
-    el.moreDrawer.addEventListener("click", (e) => {
-      if (e.target === el.moreDrawer) {
-        closeMoreDrawer();
-      }
+    el.moreDrawer.addEventListener("click", e => {
+      if (e.target === el.moreDrawer) closeMoreDrawer();
     });
   }
 
@@ -1369,39 +1474,75 @@ function bindEvents() {
 
   bindLogoUpload();
 }
-
 async function initApp() {
-  const profileLoaded = await loadProfile();
+  if (state.isBootstrapping) return;
+  state.isBootstrapping = true;
 
-  if (!profileLoaded) {
-    el.loginView.classList.remove("hidden");
-    el.appShell.classList.add("hidden");
-    return;
+  try {
+    const {
+      data: { session },
+      error
+    } = await supabaseClient.auth.getSession();
+
+    if (error || !session?.user) {
+      showLoginView();
+      return;
+    }
+
+    const sameUser = state.lastSessionUserId === session.user.id;
+    const profileLoaded = await loadProfileFromSession(session);
+
+    if (!profileLoaded) {
+      showLoginView();
+      return;
+    }
+
+    state.lastSessionUserId = session.user.id;
+    showAppView();
+
+    await Promise.all([
+      loadInvoices(),
+      loadClients(),
+      loadProducts()
+    ]);
+
+    renderDashboard();
+    renderHistorial();
+    renderClients();
+    renderProducts();
+
+    if (!sameUser) {
+      clearInvoiceForm();
+      state.selectedInvoice = null;
+      state.selectedInvoiceItems = [];
+      showView("dashboard");
+    } else {
+      renderInvoiceTable();
+      recalculateInvoice();
+      showView(state.currentView || "dashboard");
+    }
+  } catch (error) {
+    console.error("initApp error:", error);
+    showLoginView("No se pudo restaurar la sesión.");
+  } finally {
+    state.isBootstrapping = false;
   }
-
-  el.loginView.classList.add("hidden");
-  el.appShell.classList.remove("hidden");
-
-  await Promise.all([
-    loadInvoices(),
-    loadClients(),
-    loadProducts()
-  ]);
-
-  renderDashboard();
-  renderHistorial();
-  renderClients();
-  renderProducts();
-  clearInvoiceForm();
-  showView(state.currentView);
 }
 
 supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+  if (!state.authReady) return;
+
   if (session?.user) {
+    state.lastSessionUserId = session.user.id;
     await initApp();
+  } else {
+    showLoginView();
   }
 });
 
-bindEvents();
-resetInvoiceMeta();
-initApp();
+document.addEventListener("DOMContentLoaded", async () => {
+  bindEvents();
+  resetInvoiceMeta();
+  state.authReady = true;
+  await initApp();
+});
