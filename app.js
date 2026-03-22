@@ -311,6 +311,18 @@ function getCurrentClientRnc() {
   return el.clienteRncManual ? el.clienteRncManual.value.trim() : "";
 }
 
+function updateInvoiceActionButtons() {
+  const hasItems = state.invoiceItems.length > 0;
+
+  if (el.btnGuardarFactura) {
+    el.btnGuardarFactura.disabled = !hasItems;
+  }
+
+  if (el.btnImprimirFactura) {
+    el.btnImprimirFactura.disabled = !hasItems;
+  }
+}
+
 function updateClientSummary() {
   if (!el.toggleCliente || !el.clienteResumen || !el.clienteNombre) return;
 
@@ -344,6 +356,7 @@ function closeMoreDrawer() {
   if (!el.moreDrawer) return;
   el.moreDrawer.classList.add("hidden");
 }
+
 function renderInvoiceTable() {
   if (!el.tablaProductos) return;
 
@@ -353,6 +366,7 @@ function renderInvoiceTable() {
         <td colspan="5" class="empty-cell">No hay productos agregados.</td>
       </tr>
     `;
+    updateInvoiceActionButtons();
     return;
   }
 
@@ -362,13 +376,15 @@ function renderInvoiceTable() {
       <td data-label="Cant." class="right">${item.cantidad}</td>
       <td data-label="Precio" class="right">${money(item.precio)}</td>
       <td data-label="Total" class="right">${money(item.total)}</td>
-      <td data-label="" class="right">
+      <td data-label="Acción" class="right">
         <button type="button" class="btn-remove" data-remove-index="${index}">
           Quitar
         </button>
       </td>
     </tr>
   `).join("");
+
+  updateInvoiceActionButtons();
 }
 
 function recalculateInvoice() {
@@ -423,6 +439,7 @@ function clearInvoiceForm() {
   if (el.rncTexto) el.rncTexto.textContent = "";
 
   updateClientSummary();
+  updateInvoiceActionButtons();
 }
 
 function applyProfileToUI() {
@@ -1591,6 +1608,7 @@ async function initApp() {
       showView("dashboard");
     } else {
       renderInvoiceTable();
+      updateInvoiceActionButtons();
       recalculateInvoice();
       showView(state.currentView || "dashboard");
     }
