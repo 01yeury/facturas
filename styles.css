@@ -327,14 +327,15 @@ button:active{transform:scale(.985);}
 
 .product-form{
   grid-template-columns:2fr 1fr 1fr auto;
-  margin-bottom:14px;
+  margin-bottom:10px;
+  align-items:end;
 }
 
 .client-form{
   grid-template-columns:2fr 1fr auto;
-  margin-bottom:10px;
+  margin-bottom:8px;
+  align-items:end;
 }
-
 .table-wrap{overflow:auto;}
 table{width:100%;border-collapse:collapse;}
 th,td{
@@ -819,5 +820,371 @@ label{
   .modal,
   .more-drawer{
     display:none !important;
+  }
+}
+/* ========= MOBILE OPTIMIZATION ONLY ========= */
+@media (max-width: 899px) {
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  .app-shell {
+    min-height: 100dvh;
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
+  }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 70;
+    padding: 10px 12px;
+    min-height: 62px;
+  }
+
+  .topbar-left {
+    gap: 10px;
+  }
+
+  .topbar-company {
+    font-size: 12px;
+  }
+
+  .topbar-title {
+    font-size: 18px;
+  }
+
+  .main-content {
+    padding: 10px 10px 16px;
+  }
+
+  .section-card,
+  .hero-card,
+  .stat-card {
+    border-radius: 16px;
+  }
+
+  .section-card {
+    padding: 12px;
+  }
+
+  .section-head {
+    margin-bottom: 10px;
+  }
+
+  .section-head h3 {
+    font-size: 18px;
+  }
+
+  .hero-card {
+    padding: 14px;
+    margin-bottom: 12px;
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 14px;
+  }
+
+  .stat-label {
+    font-size: 13px;
+  }
+
+  .stat-value {
+    font-size: 22px;
+    margin-top: 6px;
+  }
+
+  .invoice-head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .invoice-head h2 {
+    font-size: 20px;
+    margin: 0;
+    line-height: 1.15;
+  }
+
+  .logo-preview-box {
+    width: 58px;
+    height: 58px;
+    border-radius: 14px;
+    flex-shrink: 0;
+  }
+
+  .invoice-meta {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 4px;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+
+  .toggle-row {
+    padding: 8px 0;
+    gap: 10px;
+  }
+
+  .toggle-row span,
+  .toggle-row label,
+  .toggle-row strong,
+  label {
+    font-size: 13px;
+  }
+
+  .toggle-switch {
+    width: 48px;
+    height: 28px;
+    flex-shrink: 0;
+  }
+
+  .toggle-switch::after {
+    width: 22px;
+    height: 22px;
+  }
+
+  .toggle-switch.active::after {
+    left: 23px;
+  }
+
+  .inline-note,
+  .summary-box {
+    padding: 10px 12px;
+    border-radius: 14px;
+    margin: 8px 0 12px;
+    font-size: 13px;
+  }
+
+  /* FACTURA FORM: mucho más cómodo en móvil */
+  .product-form,
+  .client-form,
+  .settings-grid,
+  .invoice-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  /* Inputs menos altos para que el teclado no “mate” la vista */
+  .main-content input,
+  .main-content select,
+  .modal-card input,
+  .modal-card select,
+  .modal-card textarea {
+    font-size: 16px;
+    padding: 11px 13px;
+    margin-top: 6px;
+    border-radius: 14px;
+    min-height: 44px;
+  }
+
+  textarea {
+    min-height: 96px;
+  }
+
+  button {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 14px;
+    border-radius: 12px;
+  }
+
+  .large-btn {
+    min-height: 46px;
+    padding: 11px 14px;
+  }
+
+  .small-btn {
+    min-height: 38px;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  /* Autocomplete: más compacto y usable */
+  .autocomplete-list {
+    max-height: 180px;
+    border-radius: 14px;
+    margin-top: 4px;
+    z-index: 80;
+  }
+
+  .autocomplete-item {
+    padding: 10px 12px;
+  }
+
+  .autocomplete-title {
+    font-size: 15px;
+    line-height: 1.2;
+  }
+
+  .autocomplete-meta {
+    font-size: 12px;
+    margin-top: 2px;
+  }
+
+  /* Tablas de factura más compactas */
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    min-width: 520px;
+  }
+
+  th,
+  td {
+    padding: 9px 7px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .icon-danger,
+  .btn-remove {
+    padding: 7px 9px;
+    font-size: 12px;
+    border-radius: 10px;
+    min-height: unset;
+  }
+
+  .totals-box {
+    margin-top: 12px;
+    padding-top: 10px;
+  }
+
+  .totals-row {
+    padding: 6px 0;
+    font-size: 14px;
+  }
+
+  .total-row {
+    font-size: 18px;
+  }
+
+  .list-item {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .list-title {
+    font-size: 15px;
+    margin-bottom: 3px;
+  }
+
+  .list-meta {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .drop-area {
+    min-height: 44px;
+    padding: 10px;
+    border-radius: 14px;
+    font-size: 13px;
+  }
+
+  .settings-preview {
+    margin: 12px 0;
+  }
+
+  .settings-logo-box {
+    width: 88px;
+    height: 88px;
+  }
+
+  .modal {
+    padding: 10px;
+    align-items: flex-end;
+  }
+
+  .modal-card {
+    width: 100%;
+    max-width: 100%;
+    padding: 16px;
+    border-radius: 18px 18px 14px 14px;
+    max-height: 88dvh;
+    overflow-y: auto;
+  }
+
+  .modal-card h3 {
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+
+  .modal-actions {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .more-drawer {
+    padding: 10px;
+  }
+
+  .more-drawer-card {
+    padding: 14px;
+    border-radius: 18px 18px 14px 14px;
+  }
+
+  .more-drawer-title {
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+
+  .bottom-nav {
+    padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+    gap: 4px;
+  }
+
+  .nav-item {
+    padding: 10px 4px;
+    font-size: 11px;
+    border-radius: 10px;
+  }
+
+  /* Cuando el teclado está abierto, más aire abajo */
+  .view.active {
+    padding-bottom: 8px;
+  }
+
+  /* Mejora visual en factura específicamente */
+  #view-factura .section-card {
+    padding-bottom: 14px;
+  }
+
+  #view-factura .invoice-actions {
+    position: sticky;
+    bottom: calc(72px + env(safe-area-inset-bottom));
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(8px);
+    padding-top: 8px;
+    margin-top: 12px;
+    z-index: 40;
+  }
+
+  /* Evita que el logo robe demasiado espacio en móvil */
+  #view-factura .invoice-head + .invoice-meta {
+    margin-top: 2px;
+  }
+}
+@media (max-width: 899px) {
+  #view-factura .table-wrap {
+    margin-top: 8px;
+  }
+
+  #view-factura .toggle-row + .toggle-row {
+    margin-top: -2px;
+  }
+
+  #view-factura .summary-box {
+    font-size: 13px;
   }
 }
