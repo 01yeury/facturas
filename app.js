@@ -306,7 +306,7 @@ function renderInvoiceTable() {
       <td data-label="Cant." class="right">${item.cantidad}</td>
       <td data-label="Precio" class="right">${money(item.precio)}</td>
       <td data-label="Total" class="right">${money(item.total)}</td>
-      <td data-label="Acción" class="right">
+      <td data-label="" class="right">
         <button type="button" class="btn-remove" data-remove-index="${index}">
           Quitar
         </button>
