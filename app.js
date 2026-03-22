@@ -20,7 +20,8 @@ const state = {
     empresa: "JeanSkirt",
     rnc: "",
     itbis: true,
-    logo: ""
+    logo: "",
+    theme: "pink"
   },
   invoiceItems: [],
   invoices: [],
@@ -146,7 +147,9 @@ const el = {
   btnBottomMore: document.getElementById("btnBottomMore"),
   moreDrawer: document.getElementById("moreDrawer"),
   moreDrawerItems: document.querySelectorAll("[data-more-view]"),
-  clienteRncManual: document.getElementById("clienteRncManual")
+  clienteRncManual: document.getElementById("clienteRncManual"),
+  themePicker: document.getElementById("themePicker"),
+  themeSwatches: document.querySelectorAll(".theme-swatch")
 };
 
 const viewTitles = {
@@ -158,6 +161,59 @@ const viewTitles = {
   ajustes: "Ajustes",
   "factura-detalle": "Detalle de factura"
 };
+
+const themeMap = {
+  pink: {
+    primary: "#e8a4bb",
+    primaryDark: "#d98aa5",
+    primarySoft: "#fbe8ee",
+    focusRing: "rgba(232,164,187,0.18)"
+  },
+  blue: {
+    primary: "#9fc4ef",
+    primaryDark: "#79aee4",
+    primarySoft: "#eaf3fd",
+    focusRing: "rgba(159,196,239,0.20)"
+  },
+  lilac: {
+    primary: "#bea5ec",
+    primaryDark: "#a487e3",
+    primarySoft: "#f2edfc",
+    focusRing: "rgba(190,165,236,0.20)"
+  },
+  mint: {
+    primary: "#97d8b6",
+    primaryDark: "#74c79a",
+    primarySoft: "#eaf8f0",
+    focusRing: "rgba(151,216,182,0.20)"
+  },
+  peach: {
+    primary: "#ecbb95",
+    primaryDark: "#e1a97b",
+    primarySoft: "#fcf1e8",
+    focusRing: "rgba(236,187,149,0.22)"
+  }
+};
+
+function applyTheme(themeName = "pink") {
+  const theme = themeMap[themeName] || themeMap.pink;
+
+  document.documentElement.style.setProperty("--primary", theme.primary);
+  document.documentElement.style.setProperty("--primary-dark", theme.primaryDark);
+  document.documentElement.style.setProperty("--primary-soft", theme.primarySoft);
+  document.documentElement.style.setProperty("--focus-ring", theme.focusRing);
+
+  state.config.theme = themeMap[themeName] ? themeName : "pink";
+  updateThemePickerUI();
+}
+
+function updateThemePickerUI() {
+  if (!el.themeSwatches) return;
+
+  el.themeSwatches.forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.theme === state.config.theme);
+  });
+}
 
 function money(value) {
   return new Intl.NumberFormat("es-DO", {
@@ -379,6 +435,8 @@ function applyProfileToUI() {
 
   setToggle(el.toggleItbis, !!state.config.itbis);
 
+  applyTheme(state.config.theme || "pink");
+
   updateClientSummary();
   recalculateInvoice();
 }
@@ -449,7 +507,8 @@ async function loadProfileFromSession(session) {
     itbis: typeof business.use_default_itbis === "boolean"
       ? business.use_default_itbis
       : true,
-    logo: business.business_logo || ""
+    logo: business.business_logo || "",
+    theme: business.theme || "pink"
   };
 
   applyProfileToUI();
@@ -550,7 +609,8 @@ async function saveSettings() {
     business_name: state.config.empresa,
     business_rnc: state.config.rnc,
     business_logo: state.config.logo || "",
-    use_default_itbis: state.config.itbis
+    use_default_itbis: state.config.itbis,
+    theme: state.config.theme || "pink"
   };
 
   const { error } = await supabaseClient
@@ -1226,6 +1286,15 @@ function bindLogoUpload() {
 }
 
 function bindEvents() {
+
+  if (el.themeSwatches) {
+    el.themeSwatches.forEach(btn => {
+      btn.addEventListener("click", () => {
+        applyTheme(btn.dataset.theme);
+      });
+    });
+  }
+  
   if (state.isBindingEvents) return;
   state.isBindingEvents = true;
 
