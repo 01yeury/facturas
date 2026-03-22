@@ -526,8 +526,12 @@ function addInvoiceItem() {
   el.productoNombre.value = "";
   el.productoCantidad.value = "";
   el.productoPrecio.value = "";
-  el.productoNombre.focus();
-
+  document.activeElement?.blur();
+  
+  document.querySelector(".table-wrap")?.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
   state.selectedProductId = null;
 
   if (el.productoSuggestions) el.productoSuggestions.classList.add("hidden");
